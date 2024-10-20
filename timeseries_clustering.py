@@ -3,36 +3,28 @@ import matplotlib.pyplot as plt
 from data_processing_insight import data_proc_insight
 from tslearn.clustering import TimeSeriesKMeans, KShape
 from validation_clustering import ValidationTimeSeriesClustering
+from validation_indices import (silhouette_index, dunn_index, davies_bouldin_index, calinski_harabasz_index,
+                                stability_index, hartigan_index)
 
+RAND_SEED = 42
 
 class TimeSeriesClustering:
-    def __init__(self, X, max_iter, params_dtw, algos_dict, val_idx_dict):
+    def __init__(self, X, max_iter, dtw_params):
         self.X = X
         self.max_iter = max_iter
-        self.params_dtw = params_dtw
-        self.algos_dict = algos_dict
-        self.val_idx_dict = val_idx_dict
+        self.dtw_params = dtw_params
 
-    def validate_clustering(self, k1, k2):
-        """
-        Find the optimal algorithm and number of clusters according to a set of validation indices and a voting rule.
-        :param k1: Minimum number of clusters to test.
-        :param k2: Maximum number of clusters to test.
-        :return: Optimal algorithm name and optimal number of clusters
-        """
-        val_tsc = ValidationTimeSeriesClustering(X=self.X, k1=k1, k2=k2, algos_dict=self.algos_dict, val_idx_dict=self.val_idx_dict)
-        optim_algo, optim_n_clusters = val_tsc.get_best_algo()
-        return optim_algo, optim_n_clusters
+    # def validate_clustering(self, k1, k2):
+    #     """
+    #     Find the optimal algorithm and number of clusters according to a set of validation indices and a voting rule.
+    #     :param k1: Minimum number of clusters to test.
+    #     :param k2: Maximum number of clusters to test.
+    #     :return: Optimal algorithm name and optimal number of clusters
+    #     """
+    #     val_tsc = ValidationTimeSeriesClustering(X=self.X, k1=k1, k2=k2, algos_dict=self.algos_dict, val_idx_dict=self.val_idx_dict)
+    #     optim_algo, optim_n_clusters = val_tsc.get_best_algo()
+    #     return optim_algo, optim_n_clusters
 
-    @staticmethod
-    def save_validation_output(optim_algo, optim_n_clusters):
-        """
-        Save the output of the clustering validation in .txt file.
-        :param optim_algo: Optimal algorithm name
-        :param optim_n_clusters: Optimal number of clusters within the tested range
-        """
-        with open("validation_output.txt", "w") as text_file:
-            text_file.write(f'Algorithm: {optim_algo}, N° clusters: {optim_n_clusters}')
 
     def run_timeseries_clustering(self, algo, n_clusters):
         """
@@ -42,12 +34,12 @@ class TimeSeriesClustering:
         :return:
         """
         if algo == 'euclidean':
-            model = TimeSeriesKMeans(n_clusters=n_clusters, init='k-means++', max_iter=self.max_iter, metric='euclidean', random_state=42)
+            model = TimeSeriesKMeans(n_clusters=n_clusters, init='k-means++', max_iter=self.max_iter, metric='euclidean', random_state=RAND_SEED)
         elif algo == 'dtw':
-            model = TimeSeriesKMeans(n_clusters=n_clusters, init='k-means++', max_iter=self.max_iter, random_state=42,
-                                 n_jobs=-1, metric='dtw', metric_params=self.params_dtw)
+            model = TimeSeriesKMeans(n_clusters=n_clusters, init='k-means++', max_iter=self.max_iter, random_state=RAND_SEED,
+                                 n_jobs=-1, metric='dtw', metric_params=self.dtw_params)
         elif algo == 'kshape':
-            model = KShape(n_clusters=n_clusters, max_iter=self.max_iter, random_state=42)
+            model = KShape(n_clusters=n_clusters, max_iter=self.max_iter, random_state=RAND_SEED)
         Y_data = model.fit_predict(self.X)
 
         return model, Y_data
@@ -89,26 +81,46 @@ if __name__ == '__main__':
 
     # Constraining parameters to manage memory usage for DTW
     window_size = int(0.1*X_data.shape[0])  # window size (sakoe_chiba)
-    params_dtw = {'global_constraint': "sakoe_chiba", 'sakoe_chiba_radius': window_size}
+    dtw_params = {'global_constraint': "sakoe_chiba", 'sakoe_chiba_radius': window_size}
     down_sample_factor = 6
-    max_iter = 10
+    max_iter = 1
 
     # Down sampling of the time series data
     X_data = X_data[:, ::down_sample_factor]
 
     # Dictionaries of the algorithms and indices used for validation
-    algos_dict = {0: 'euclidean', 1: 'dtw', 2: 'kshape'}
-    val_idx_dict = {0: 'silhouette', 1: 'dunn', 2: 'davies-bouldin', 3: 'calinski-harabasz', 4: 'apn', 5: 'ad',
-                    6: 'hartigan'}
+    algos_dict = {0: {'name': 'K-means', 'metric': 'euclidean',
+                      'model': lambda n_clusters: TimeSeriesKMeans(init='k-means++', max_iter=max_iter,
+                                                                   metric='euclidean', random_state=RAND_SEED,
+                                                                   n_clusters=n_clusters)},
+                  1: {'name': 'K-means', 'metric': 'dtw', 'metric_params': dtw_params,
+                      'model': lambda n_clusters: TimeSeriesKMeans(init='k-means++', max_iter=max_iter,
+                                                                   random_state=RAND_SEED,
+                                                                   n_jobs=-1, metric='dtw', metric_params=dtw_params,
+                                                                   n_clusters=n_clusters)},
+                  2: {'name': 'K-shape', 'metric': 'cross-correlation',
+                      'model': lambda n_clusters: KShape(max_iter=max_iter, random_state=RAND_SEED,
+                                                         n_clusters=n_clusters)}}
 
     # Instantiation of timeseriesclustering object
-    tsc = TimeSeriesClustering(X=X_data, max_iter=max_iter, params_dtw=params_dtw, algos_dict=algos_dict,
-                               val_idx_dict=val_idx_dict)
+    tsc = TimeSeriesClustering(X=X_data, max_iter=max_iter, dtw_params=dtw_params)
 
     # Validation to choose optimal algorithm and number of clusters
     # Range of the number of clusters to try from
+    perc_col_removed = 0.1
+    val_idx_dict = {0: {'name': 'silhouette', 'func': silhouette_index, 'lower_better': False},
+                    1: {'name': 'dunn', 'func': dunn_index, 'lower_better': True},
+                    2: {'name': 'davies-bouldin', 'func': davies_bouldin_index, 'lower_better': True},
+                    3: {'name': 'calinski-harabasz', 'func': calinski_harabasz_index, 'lower_better': True},
+                    4: {'name': 'apn', 'func': stability_index, 'stability_params': {'method': 'apn', 'perc_col_removed': perc_col_removed}, 'lower_better': True},
+                    5: {'name': 'ad', 'func': stability_index, 'stability_params': {'method': 'ad', 'perc_col_removed': perc_col_removed}, 'lower_better': True},
+                    6: {'name': 'hartigan', 'func': hartigan_index, 'hartigan_params': {}, 'lower_better': True}}
     k1, k2 = 2, 6
-    optim_algo, optim_n_clusters = tsc.validate_clustering(k1=k1, k2=k2)
+    val_tsc = ValidationTimeSeriesClustering(X=X_data, k1=k1, k2=k2, max_iter=max_iter,
+                                             algos_dict=algos_dict, val_idx_dict=val_idx_dict)
+    optim_algo, optim_n_clusters = val_tsc.get_best_algo()
+    # Save output of validation
+    val_tsc.save_output_to_file('output_validation.txt', optim_algo, optim_n_clusters)
 
     # Run clustering with optimal algorithm and number of clusters
     tsc.run_timeseries_clustering(optim_algo, optim_n_clusters)
