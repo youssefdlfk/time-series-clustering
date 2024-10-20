@@ -169,7 +169,7 @@ def stability_index(X, model, labels, metric, **kwargs):
     :param X:
     :param model:
     :param labels:
-    :param perc_col_removed:
+    :param perc_col_del:
     :param method:
     :param metric:
     :param kwargs:
@@ -183,7 +183,7 @@ def stability_index(X, model, labels, metric, **kwargs):
     centroids = [model.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters)]
     # Construct the perturbed dataset as original dataset with a percentage of datapoints removed
     n_col = X.shape[1]
-    n_col_removed = int(n_col*kwargs['stability_params']['perc_col_removed'])
+    n_col_removed = int(n_col*kwargs['stability_params']['perc_col_del'])
     n_col_keep = n_col - n_col_removed
     random.seed(42)  # Set a seed for reproducibility
     idx_col_keep = np.sort(random.sample(range(X.shape[1]), n_col_keep))
@@ -203,7 +203,7 @@ def stability_index(X, model, labels, metric, **kwargs):
         return 1 - (apn/total_oij)
     # Compute Average Distance (AD) stability measure
     # Correspond to the average distance between observations placed in the same cluster under both cases (the lower the better)
-    if kwargs['stability_params']['method'] == 'ad':
+    elif kwargs['stability_params']['method'] == 'ad':
         ad = 0
         for i in range(n_clusters):
             for j in range(n_clusters):
@@ -218,7 +218,7 @@ def stability_index(X, model, labels, metric, **kwargs):
         return ad/X.shape[0]
     # Compute the Average Distance between Means (ADM)
     # Correspond to average distance between cluster centroids for observations placed in the same cluster under both cases (the lower the better)
-    if kwargs['stability_params']['method'] == 'adm':
+    elif kwargs['stability_params']['method'] == 'adm':
         centroids_cut = [model.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters)]
         adm = 0
         for i in range(n_clusters):
@@ -264,7 +264,6 @@ def hartigan_index(X, model_k, labels_k, model_k1, labels_k1, metric, **kwargs):
     # Multiplying factor
     factor = X.shape[0] - n_clusters1 - 1
     return (WCSS1/WCSS2 - 1)/factor
-
 
 
 def krzanoswki_lai_index(X, model1, labels1, model2, labels2, model3, labels3, metric, **kwargs):

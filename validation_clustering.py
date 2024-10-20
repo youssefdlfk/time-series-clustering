@@ -4,11 +4,10 @@ from utils_clustering import spearman_footrule_distance
 
 
 class ValidationTimeSeriesClustering:
-    def __init__(self, X, k1, k2, max_iter, algos_dict, val_idx_dict):
+    def __init__(self, X, k1, k2, algos_dict, val_idx_dict):
         self.X = X
         self.k1 = k1
         self.k2 = k2
-        self.max_iter = max_iter
         self.algos_dict = algos_dict
         self.nb_algos = len(algos_dict)
         self.val_idx_dict = val_idx_dict
@@ -24,49 +23,48 @@ class ValidationTimeSeriesClustering:
     def compute_score_matrix(self):
         """
         Compute a score matrix of nb_val_idx validity indices for nb_algos clustering algorithms of a dataset X of time series
-        :param X: Tensor dataset of time series of shape [n, d]
-        :param k1: Starting number of clusters
-        :param k2: Final number of clusters
         :return: Score matrix
         """
         # Initialize empty array for the score matrix
         score_matrix = self._initialize_score_matrix()
 
         # Loop over the clustering algorithms
-        for algo_idx in self.algos_dict:
-            if self.algos_dict[algo_idx]['metric'] == 'dtw':
-                metric_params = self.algos_dict[algo_idx]['metric_params']
+        for algo_idx, (_, algo_inf) in enumerate(self.algos_dict.items()):
+            if algo_inf['metric'] == 'dtw':
+                metric_params = algo_inf['metric_params']
             else:
                 metric_params = {}
+
             # Loop over the range of clusters
             for k in range(self.k1, self.k2+1):
                 # Train clustering model with k clusters
-                model1 = self.algos_dict[algo_idx]['model'](n_clusters=k)
+                model1 = algo_inf['model'](n_clusters=k)
                 # Fit and predict the cluster labels
                 labels1 = model1.fit_predict(self.X)
+
                 # Loop over the validation indices
-                for val_idx in self.val_idx_dict:
+                for val_idx, (val_name, val_inf) in enumerate(self.val_idx_dict.items()):
                     # Specify the parameters for the stability indices (apn and ad)
-                    if self.val_idx_dict[val_idx]['name'] in ['apn', 'ad']:
-                        score = self.val_idx_dict[val_idx]['func'](X=self.X, model=model1, labels=labels1,
-                                                                   metric=self.algos_dict[algo_idx]['metric'],
+                    if val_name in ['apn', 'ad']:
+                        score = val_inf['func'](X=self.X, model=model1, labels=labels1,
+                                                                   metric=algo_inf['metric'],
                                                                    metric_params=metric_params,
-                                                                   stability_params=self.val_idx_dict[val_idx]['stability_params'])
+                                                                   stability_params=val_inf['stability_params'])
                     # Specify a model with k+1 clusters required for the hartigan index
-                    elif self.val_idx_dict[val_idx]['name'] == 'hartigan':
-                        model1_k1 = self.algos_dict[algo_idx]['model'](n_clusters=k+1)
-                        score = self.val_idx_dict[val_idx]['func'](X=self.X, model_k=model1, labels_k=labels1,
+                    elif val_name == 'hartigan':
+                        model1_k1 = algo_inf['model'](n_clusters=k+1)
+                        val_inf['func'](X=self.X, model_k=model1, labels_k=labels1,
                                                                    model_k1=model1_k1, labels_k1=model1_k1.fit_predict(self.X),
-                                                                   metric=self.algos_dict[algo_idx]['metric'],
+                                                                   metric=algo_inf['metric'],
                                                                    metric_params=metric_params)
                     # Score is computed the same for all other indices
                     else:
-                        score = self.val_idx_dict[val_idx]['func'](X=self.X, model=model1, labels=labels1,
-                                                                   metric=self.algos_dict[algo_idx]['metric'],
+                        score = val_inf['func'](X=self.X, model=model1, labels=labels1,
+                                                                   metric=algo_inf['metric'],
                                                                    metric_params=metric_params)
                     # For silhouette, we make it negative such that the lower the index, the better the clustering
-                    if not self.val_idx_dict[val_idx]['lower_better']:
-                        score = score*(-1)
+                    if not val_inf['lower_better']:
+                        score *= -1
 
                     # The score is implemented in the corresponding matrix element
                     score_matrix[(k - self.k1) + algo_idx * (self.k2 - self.k1), val_idx] = score
