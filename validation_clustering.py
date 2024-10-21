@@ -1,32 +1,29 @@
 import numpy as np
 from sklearn.preprocessing import minmax_scale
 from utils_clustering import spearman_footrule_distance
+from timeseries_clustering import TimeSeriesClustering, ClusteringConfig
 
 
-class ValidationTimeSeriesClustering:
-    def __init__(self, X, k1, k2, algos_dict, val_idx_dict):
-        self.X = X
-        self.k1 = k1
-        self.k2 = k2
-        self.algos_dict = algos_dict
-        self.nb_algos = len(algos_dict)
-        self.val_idx_dict = val_idx_dict
-        self.nb_val_idx = len(val_idx_dict)
+class ValidationTimeSeriesClustering(TimeSeriesClustering):
+    def __init__(self, X: np.ndarray, config: ClusteringConfig):
+        super().__init__(X, config)
+        if config.k1 >= config.k2:
+            raise ValueError(f'Invalid range for number of clusters: k1 must be smaller than k2')
+        if config.k1 <= 0 or config.k2 <= 0:
+            raise ValueError(f'Invalid range for number of clusters: k1 and k2 have to be positive integers')
+        self.k1 = config.k1
+        self.k2 = config.k2
+        self.nb_algos = len(self.algos_dict)
+        self.nb_val_idx = len(self.val_idx_dict)
 
-    def _initialize_score_matrix(self):
+    def compute_score_matrix(self) -> np.ndarray:
         """
-        Initialize an empty score matrix with approximate dimensions
+        Compute a score matrix which scores each combination of 'algorithm-#clusters' using the validation indices
         :return: Score matrix
         """
-        return np.empty((self.nb_algos*(self.k2-self.k1), self.nb_val_idx))
 
-    def compute_score_matrix(self):
-        """
-        Compute a score matrix of nb_val_idx validity indices for nb_algos clustering algorithms of a dataset X of time series
-        :return: Score matrix
-        """
         # Initialize empty array for the score matrix
-        score_matrix = self._initialize_score_matrix()
+        score_matrix = np.empty((self.nb_algos*(self.k2+1-self.k1), self.nb_val_idx))
 
         # Loop over the clustering algorithms
         for algo_idx, (_, algo_inf) in enumerate(self.algos_dict.items()):
@@ -47,31 +44,27 @@ class ValidationTimeSeriesClustering:
                     # Specify the parameters for the stability indices (apn and ad)
                     if val_name in ['apn', 'ad']:
                         score = val_inf['func'](X=self.X, model=model1, labels=labels1,
-                                                                   metric=algo_inf['metric'],
-                                                                   metric_params=metric_params,
-                                                                   stability_params=val_inf['stability_params'])
+                                                metric=algo_inf['metric'], metric_params=metric_params,
+                                                stability_params=val_inf['stability_params'])
                     # Specify a model with k+1 clusters required for the hartigan index
                     elif val_name == 'hartigan':
                         model1_k1 = algo_inf['model'](n_clusters=k+1)
                         val_inf['func'](X=self.X, model_k=model1, labels_k=labels1,
-                                                                   model_k1=model1_k1, labels_k1=model1_k1.fit_predict(self.X),
-                                                                   metric=algo_inf['metric'],
-                                                                   metric_params=metric_params)
+                                        model_k1=model1_k1, labels_k1=model1_k1.fit_predict(self.X),
+                                        metric=algo_inf['metric'], metric_params=metric_params)
                     # Score is computed the same for all other indices
                     else:
                         score = val_inf['func'](X=self.X, model=model1, labels=labels1,
-                                                                   metric=algo_inf['metric'],
-                                                                   metric_params=metric_params)
+                                                metric=algo_inf['metric'], metric_params=metric_params)
                     # For silhouette, we make it negative such that the lower the index, the better the clustering
                     if not val_inf['lower_better']:
                         score *= -1
-
                     # The score is implemented in the corresponding matrix element
                     score_matrix[(k - self.k1) + algo_idx * (self.k2 - self.k1), val_idx] = score
 
         return score_matrix
 
-    def _normalize_score_matrix(self, score_matrix):
+    def _normalize_score_matrix(self, score_matrix: np.ndarray):
         """
         Scale a score matrix to [0,1] along the validation scores for more accurate comparison.
         :param score_matrix: Score matrix
@@ -81,22 +74,29 @@ class ValidationTimeSeriesClustering:
         for idx in range(self.nb_val_idx):
             score_matrix[:, idx] = minmax_scale(score_matrix[:, idx])
 
+        # Save score matrix
+        np.save('score_matrix.npy', score_matrix)
+
         return score_matrix
 
     @staticmethod
-    def _rank_algo(score_matrix):
+    def _rank_algo(score_matrix: np.ndarray):
         """
         Computes a matrix of the ranks of algorithms-#clusters combinations from a matrix of their validity scores
         :param score_matrix: Matrix of the validity scores of algo-clus combinations
         :return: The rank matrix
         """
+        # Give ranking to algorithms-#clsuters for each validation index (0=best score)
         indices = np.argsort(score_matrix, axis=0)
         rank_matrix = np.argsort(indices, axis=0)
+        # Save rank matrix
+        np.save('rank_matrix.npy', rank_matrix)
         return rank_matrix
 
-    def get_best_algo(self):
+    def get_best_algo(self) -> tuple[str, int]:
         """
-        Choose the best algorithm-#clusters combination using the Spearman footrule distance on their ranks
+        Choose the best algorithm-#clusters combination as the closest to a reference ranking using the Spearman
+        footrule distance
         :return: A string of the winning algorithm-#clusters combination
         """
         # Compute the score matrix
@@ -119,13 +119,13 @@ class ValidationTimeSeriesClustering:
 
         # Get the corresponding algorithm name and number of clusters
         algos_clus_dict = {}
-        for i in self.algos_dict.keys():
+        for algo_idx, (algo_str, _) in enumerate(self.algos_dict.items()):
             for k in range(self.k1, self.k2):
-                algos_clus_dict[(k-self.k1)+i*(self.k2-self.k1)] = (self.algos_dict[i], k)
+                algos_clus_dict[(k-self.k1)+algo_idx*(self.k2-self.k1)] = (algo_str, k)
         return algos_clus_dict[best_algo_idx]
 
     @staticmethod
-    def save_output_to_file(filename, optim_algo, optim_n_clusters):
+    def save_output_to_file(filename: str, optim_algo: str, optim_n_clusters: int):
         """
         Save the output of the clustering validation in .txt file.
         :param filename: Name of the saved text file
@@ -133,6 +133,6 @@ class ValidationTimeSeriesClustering:
         :param optim_n_clusters: Optimal number of clusters within the tested range
         """
         with open(filename, "w") as text_file:
-            text_file.write(f'Algorithm: {optim_algo}, N° clusters: {optim_n_clusters}')
+            text_file.write(f'Result of Validation: Algorithm: {optim_algo}, N° clusters: {optim_n_clusters}')
 
 

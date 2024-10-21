@@ -4,7 +4,7 @@ from tslearn.metrics.cycc import normalized_cc
 from aeon.distances import dtw_distance
 
 
-def compute_WCSS(n_clusters, cluster_k, centroids, metric, **kwargs):
+def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, metric, **kwargs):
     """
     Compute the Within-Cluster Sum Squared distance
     :param n_clusters: Number of clusters
@@ -21,31 +21,31 @@ def compute_WCSS(n_clusters, cluster_k, centroids, metric, **kwargs):
             if metric == 'euclidean':
                 variance += ((datapoint - centroids[i])**2).sum().item()
             elif metric == 'dtw':
-                variance += dtw_distance(datapoint.numpy(), centroids[i], window=kwargs['metric_params']['sakoe_chiba_radius'])**2
+                variance += dtw_distance(datapoint, centroids[i], window=kwargs['metric_params']['sakoe_chiba_radius'])**2
             elif metric == 'cross-correlation':
                 variance += distance_cross_correlation(datapoint, centroids[i])
         WCSS += variance
     return WCSS
 
 
-def clusters_labels_to_indices(Y_data):
+def clusters_labels_to_indices(labels: np.ndarray):
     """
     Convert the cluster labels array (values = index of the cluster each data point belongs to) to clusters indices array
     (values = index of the data point within the list corresponding to the cluster it belongs to)
-    :param Y_data: Cluster labels array
+    :param labels: Cluster labels array
     :return: Cluster indices array
     """
     indices_all = []
-    for cluster_idx in np.unique(Y_data):
+    for cluster_idx in np.unique(labels):
         cluster_idx_list = []
-        for data_idx in range(len(Y_data)):
-            if Y_data[data_idx] == cluster_idx:
+        for data_idx in range(len(labels)):
+            if labels[data_idx] == cluster_idx:
                 cluster_idx_list.append(data_idx)
         indices_all.append(cluster_idx_list)
     return indices_all
 
 
-def distance_cross_correlation(X1, X2):
+def distance_cross_correlation(X1: np.ndarray, X2: np.ndarray):
     """
     Compute cross-correlation between two time series
     :param X1: First time series
@@ -55,7 +55,7 @@ def distance_cross_correlation(X1, X2):
     return normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1)).max()
 
 
-def pairwise_cross_correlation(X1, X2):
+def pairwise_cross_correlation(X1: np.ndarray, X2: np.ndarray):
     """
     Compute cross-correlation matrix between two sets of time series
     :param X1: First dataset
@@ -67,7 +67,7 @@ def pairwise_cross_correlation(X1, X2):
     # for i in range(dim_X[0]):
     #     for j in range(dim_X[1]):
     #         corr_matrix[i][j] = np.correlate(X1[i], X2[j])
-    return cdist_normalized_cc(X1.unsqueeze(-1).numpy(), X2.unsqueeze(-1).numpy(), np.ones(X1.shape[0])*-1,
+    return cdist_normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1), np.ones(X1.shape[0])*-1,
                                np.ones(X2.shape[0])*-1, False)
 
 
@@ -116,7 +116,7 @@ def cross_correlation_average(dataset, max_iters=10, tol=1e-4):
     return global_centroid
 
 
-def spearman_footrule_distance(X, Y):
+def spearman_footrule_distance(X: np.ndarray, Y: np.ndarray) -> float:
     """
     Compute the Spearman footrule distance between two vectors
     :param X: First vector

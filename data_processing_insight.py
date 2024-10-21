@@ -1,10 +1,12 @@
+import numpy as np
 import pandas as pd
 import torch
 
 
-def data_proc_insight(csv_name, timeseries_length):
+def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor: int) -> tuple[np.ndarray, pd.DataFrame]:
     """
     Process CSV data from Insight experiment and convert it into a tensor for clustering
+    :param down_sample_factor: Down sampling factor for time series data
     :param csv_name: File name of the CSV data
     :param timeseries_length: Number of data points of each time series (should be the same)
     :return: A tensor of the time series data and a dataframe indicating insight or not insight for each time series
@@ -48,5 +50,11 @@ def data_proc_insight(csv_name, timeseries_length):
 
     # Create dataframe indicating whether insight or non insight for each trial
     df_insight = df.drop_duplicates(subset=['Id', 'Trial', 'Insight'])[['Id', 'Trial', 'Insight']]
+
+    # Convert tensor to numpy array
+    X_data = X_data.numpy()
+
+    # Downsampling
+    X_data = X_data[:, ::down_sample_factor]
 
     return X_data, df_insight
