@@ -130,7 +130,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         algos_clus_dict = {}
         for algo_idx, (algo_str, _) in enumerate(self.algos_dict.items()):
             for k in range(self.k1, self.k2):
-                algos_clus_dict[(k-self.k1)+algo_idx*(self.k2-self.k1)] = (algo_str, k)
+                algos_clus_dict[(k-self.k1)+algo_idx*(self.k2+1-self.k1)] = (algo_str, k)
         return algos_clus_dict[best_algo_idx]
 
     @staticmethod

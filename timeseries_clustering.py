@@ -100,7 +100,7 @@ class TimeSeriesClustering:
                 if df_insight['Insight'].iloc[idx] == 1:
                     nb_insights += 1
             if isinstance(model, KShape):
-                # Add back the mean after z-normalization to shift the centroid up for better visualization
+                # Add back the mean (removed due to z-normalization) to shift the centroid up for better visualization
                 centroid = model.cluster_centers_[cluster].flatten() + np.mean(self.X[np.flatnonzero(labels==cluster)])
             else:
                 centroid = model.cluster_centers_[cluster].flatten()
