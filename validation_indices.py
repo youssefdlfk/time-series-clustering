@@ -33,7 +33,8 @@ def silhouette_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kw
         elif metric == 'cross-correlation':
             b = np.min([np.mean(pairwise_cross_correlation(np.expand_dims(X[i], axis=0), cluster_k[j])) for j in range(n_clusters) if labels[i] != j])
             a = np.mean(pairwise_cross_correlation(np.expand_dims(X[i], axis=0), cluster_k[labels[i]]))
-        s_i.append((b-a)/max(b,a))
+
+        s_i.append((b-a)/max(b,a) if max(b,a) !=0 else 0)
 
     return np.mean(s_i)
 

@@ -60,7 +60,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                     if not val_inf['lower_better']:
                         score *= -1
                     # The score is implemented in the corresponding matrix element
-                    score_matrix[(k - self.k1) + algo_idx * (self.k2 - self.k1), val_idx] = score
+                    score_matrix[(k - self.k1) + algo_idx * (self.k2 + 1 - self.k1), val_idx] = score
 
         return score_matrix
 

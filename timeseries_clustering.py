@@ -2,7 +2,7 @@ import numpy as np
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import pickle
 from data_processing_insight import data_proc_insight
 from tslearn.clustering import TimeSeriesKMeans, KShape
 from validation_indices import (silhouette_index, dunn_index, davies_bouldin_index, calinski_harabasz_index,
@@ -96,7 +96,7 @@ class TimeSeriesClustering:
         labels = model.fit_predict(self.X)
         return model, labels
 
-    def plot_timeseries_clustering(self, model: TimeSeriesKMeans, labels: np.ndarray, algo_str: str,
+    def plot_timeseries_clustering(self, model, labels: np.ndarray, algo_str: str,
                                    n_clusters: int, df_insight: pd.DataFrame) -> None:
         """
         Apply clustering and plot the timeseries, their centroids and the insight trial %
@@ -116,8 +116,11 @@ class TimeSeriesClustering:
                 plt.plot(self.X[idx], "k-", alpha=0.2)
                 if df_insight['Insight'].iloc[idx] == 1:
                     nb_insights += 1
-            # Add back the mean after z-normalization to shift the centroid up for better visualization
-            centroid = model.cluster_centers_[cluster].flatten() + np.mean(self.X[np.flatnonzero(labels==cluster)])
+            if isinstance(model, KShape):
+                # Add back the mean after z-normalization to shift the centroid up for better visualization
+                centroid = model.cluster_centers_[cluster].flatten() + np.mean(self.X[np.flatnonzero(labels==cluster)])
+            else:
+                centroid = model.cluster_centers_[cluster].flatten()
             plt.plot(centroid, "r-")
             plt.title(f'Cluster {cluster+1} \n #trials: {len(indices)} \n Insight trials (% of cluster): '
                       f'{(nb_insights/len(indices))*100:.1f}% \n Insight trials (% of total): {(nb_insights/nb_insights_total)*100:.1f}%')
@@ -155,8 +158,12 @@ if __name__ == '__main__':
     # Run clustering with optimal algorithm and number of clusters
     model, labels = clusterer.run_timeseries_clustering(optim_algo, optim_n_clusters)
 
-    # Save cluster labels
-    np.save('optim_model_labels.npy', labels)
+    # Save best model
+    with open('optim_model.pkl', 'wb') as file:
+        pickle.dump(model, file)
+
+    # Save best cluster labels
+    np.save('optim_labels.npy', labels)
 
     # Plot time series clusters with centroids and % insights
     clusterer.plot_timeseries_clustering(model=model, labels=labels, algo_str=optim_algo, n_clusters=optim_n_clusters,
