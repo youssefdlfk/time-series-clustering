@@ -1,7 +1,12 @@
+import logging
 import numpy as np
 from sklearn.preprocessing import minmax_scale
+from config import ClusteringConfig
 from utils_clustering import spearman_footrule_distance
-from timeseries_clustering import TimeSeriesClustering, ClusteringConfig
+from timeseries_clustering import TimeSeriesClustering
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class ValidationTimeSeriesClustering(TimeSeriesClustering):
@@ -21,6 +26,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         Compute a score matrix which scores each combination of 'algorithm-#clusters' using the validation indices
         :return: Score matrix
         """
+        logging.info("Computing score matrix for clustering algorithms and cluster numbers...")
 
         # Initialize empty array for the score matrix
         score_matrix = np.empty((self.nb_algos*(self.k2+1-self.k1), self.nb_val_idx))
@@ -99,6 +105,9 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         footrule distance
         :return: A string of the winning algorithm-#clusters combination
         """
+
+        logging.info("Selecting best algorithm and #clusters based on the score matrix...")
+
         # Compute the score matrix
         score_matrix = self.compute_score_matrix()
         # Normalize score matrix

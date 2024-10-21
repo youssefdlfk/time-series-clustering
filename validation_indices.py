@@ -1,9 +1,9 @@
 import copy
+import random
 import numpy as np
 from sklearn.metrics import pairwise_distances, euclidean_distances
 from aeon.distances import dtw_pairwise_distance, dtw_distance
 from aeon.clustering.averaging import elastic_barycenter_average
-import random
 from utils_clustering import pairwise_cross_correlation, distance_cross_correlation, cross_correlation_average, compute_WCSS
 
 

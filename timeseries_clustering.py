@@ -1,34 +1,13 @@
+import logging
 import numpy as np
-from dataclasses import dataclass
 import matplotlib.pyplot as plt
 import pandas as pd
-import pickle
-from data_processing_insight import data_proc_insight
 from tslearn.clustering import TimeSeriesKMeans, KShape
 from validation_indices import (silhouette_index, dunn_index, davies_bouldin_index, calinski_harabasz_index,
                                 stability_index, hartigan_index)
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
-@dataclass
-class ClusteringConfig:
-    """Configuration parameters for time series clustering"""
-    # Length of time series
-    ts_length: int
-    # Name of the csv data file
-    csv_name: str
-    # Maximum number of iterations for training of clustering models
-    max_iter: int
-    # Constraining window (sakoe-chiba) on the DTW matrix as a percentage of the time series length
-    window_size_perc: float
-    # Percentage of data points removed in the perturbed clusters for stability measures
-    perc_col_del: float
-    # Range of the number of clusters to explore for validation
-    k1: int
-    k2: int
-    # Down sampling factor of time series to manage memory usage for DTW
-    down_sample_factor: int
-    # Random seed for reproducibility
-    random_seed: int = 42
 
 class TimeSeriesClustering:
     def __init__(self, X, config):
@@ -92,6 +71,8 @@ class TimeSeriesClustering:
         :param algo_str: Key string in the algorithm dictionary referring to a specific clustering algorithm
         :return: Clustering model and labels
         """
+        logging.info("Running clustering...")
+
         model = self.algos_dict[algo_str]['model'](n_clusters=n_clusters)
         labels = model.fit_predict(self.X)
         return model, labels
@@ -106,6 +87,8 @@ class TimeSeriesClustering:
         :param n_clusters: Number of clusters
         :param df_insight: Dataframe indicating insight or not insight for each time series
         """
+        logging.info("Plotting clustering results...")
+
         plt.figure(figsize=(15, 8))
         nb_insights_total = len(df_insight[df_insight['Insight']==1])
         for cluster in range(n_clusters):
@@ -126,45 +109,3 @@ class TimeSeriesClustering:
                       f'{(nb_insights/len(indices))*100:.1f}% \n Insight trials (% of total): {(nb_insights/nb_insights_total)*100:.1f}%')
         plt.savefig(f'{algo_str}_{n_clusters}clusters.png')
         plt.show()
-
-
-if __name__ == '__main__':
-    config = ClusteringConfig(ts_length=2100,
-                              csv_name="2100interpolationfulldata.csv",
-                              max_iter=1,
-                              window_size_perc=0.05,
-                              perc_col_del=0.1,
-                              k1=2,
-                              k2=3,
-                              down_sample_factor=14)
-
-    # Load and process time series data and extract dataframe on insight or not
-    X_data, df_insight = data_proc_insight(csv_name=config.csv_name, timeseries_length=config.ts_length,
-                                           down_sample_factor=config.down_sample_factor)
-
-    # Instantiation of timeseriesclustering object
-    clusterer = TimeSeriesClustering(X=X_data, config=config)
-
-    # Instantiation of validationtimeseriesclustering object
-    from validation_clustering import ValidationTimeSeriesClustering
-    validator = ValidationTimeSeriesClustering(X=X_data, config=config)
-
-    # Get optimal combination of algorithm and number of clusters
-    optim_algo, optim_n_clusters = validator.get_best_algo()
-
-    # Save output of validation
-    validator.save_output_to_file('output_validation.txt', optim_algo, optim_n_clusters)
-
-    # Run clustering with optimal algorithm and number of clusters
-    model, labels = clusterer.run_timeseries_clustering(optim_algo, optim_n_clusters)
-
-    # Save best model
-    with open('optim_model.pkl', 'wb') as file:
-        pickle.dump(model, file)
-
-    # Save best cluster labels
-    np.save('optim_labels.npy', labels)
-
-    # Plot time series clusters with centroids and % insights
-    clusterer.plot_timeseries_clustering(model=model, labels=labels, algo_str=optim_algo, n_clusters=optim_n_clusters,
-                                         df_insight=df_insight)
