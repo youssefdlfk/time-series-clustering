@@ -29,9 +29,9 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
     def _initialize_val_idx(self) -> dict:
         val_idx_dict = {
             'silhouette': {'func': silhouette_index, 'lower_better': False},
-            'dunn': {'func': dunn_index, 'lower_better': True},
+            'dunn': {'func': dunn_index, 'lower_better': False},
             'davies-bouldin': {'func': davies_bouldin_index, 'lower_better': True},
-            'calinski-harabasz': {'func': calinski_harabasz_index, 'lower_better': True},
+            'calinski-harabasz': {'func': calinski_harabasz_index, 'lower_better': False},
             'apn': {
                 'func': stability_index,
                 'stability_params': {'method': 'apn', 'perc_col_del': self.config.perc_col_del},

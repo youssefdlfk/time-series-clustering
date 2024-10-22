@@ -39,16 +39,16 @@ def silhouette_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kw
             a = np.mean(pairwise_cross_correlation(np.expand_dims(X[i], axis=0), cluster_k[labels[i]]))
 
         # cross-correlation can lead to 0/0 (e.g., due to zero time series) and the distance becomes undefined
-        # here we handle it as highest dissimilarity
-        s_i.append((b-a)/max(b,a) if max(b,a) != 0 else -1)
+        # here we handle it as neutral contribution
+        s_i.append((b-a)/max(b,a) if max(b,a) != 0 else 0)
 
     return np.mean(s_i)
 
 
 def dunn_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
     """
-    Compute the Dunn index of a time series clustering, i.e. the ratio of the minimum inter-cluster distance to the maximum intra-cluster distance
-    The lower the better
+    Compute the Dunn index of a time series clustering, i.e. the ratio of the minimum inter-cluster distance and the
+    maximum intra-cluster distance. The higher the better.
     :param X: Torch tensor of shape [N, d], N = number of time series, d = number of samples for each
     :param labels: Numpy array of the cluster number for each data point
     :param metric: The similarity measure (euclidean, dtw or cross-correlation)
@@ -130,7 +130,7 @@ def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, 
 def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
     """
     Compute the Calinski-Harabasz index for time series clustering, i.e. a ratio of between-cluster dispersion (B)
-    and within-clsuter dispersion (W). The lower the value, the better the clustering.
+    and within-cluster dispersion (W). The higher the value, the better the clustering.
     :param model: Clustering model
     :param X: Torch tensor of shape [N, d], N = number of time series, d = number of samples for each
     :param labels: Numpy array of the cluster number for each data point
@@ -143,33 +143,34 @@ def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: st
     # cluster_k is a list of indices of data points in cluster k
     cluster_k = [X[labels == k] for k in range(n_clusters)]
     # factor
-    factor = (X.shape[1] - n_clusters)/(n_clusters-1)
+    scaling_factor = (len(X) - n_clusters)/(n_clusters-1)
     # between cluster dispersion
     B = 0
     # centroids is an array of the cluster centroids
     centroids = [model.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters)]
     if metric == 'euclidean':
+        # compute mean of centroids
+        mu = np.mean(np.vstack(centroids), axis=0)
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
-            mu = np.mean(X, axis=0)
             mu_i = centroids[i]
             B += n_i * ((mu_i - mu) ** 2).sum().item()
     elif metric == 'dtw':
+        mu = elastic_barycenter_average(np.vstack(centroids), metric).squeeze(0)
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
-            mu = elastic_barycenter_average(X, metric).squeeze(0)
             mu_i = centroids[i]
             B += n_i * dtw_distance(mu_i, mu, window=kwargs['metric_params']['sakoe_chiba_radius']) ** 2
     elif metric == 'cross-correlation':
+        mu = cross_correlation_average(np.expand_dims(np.vstack(centroids), axis=-1)).squeeze(-1)
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
-            mu = cross_correlation_average(np.expand_dims(X, axis=-1)).squeeze(-1)
             mu_i = centroids[i]
             B += n_i * distance_cross_correlation(mu_i, mu) ** 2
 
     # within-cluster dispersion
     W = compute_WCSS(n_clusters=n_clusters, cluster_k=cluster_k, centroids=centroids, metric=metric, **kwargs)
-    return (B/W)*factor
+    return (B/W)*scaling_factor
 
 
 def stability_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
@@ -207,24 +208,26 @@ def stability_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwa
         apn, total_oij = 0, 0
         for i in range(n_clusters):
             oij_sq = 0
+            cluster_indices = np.flatnonzero(labels == i)
             for j in range(n_clusters):
-                total_oij += len(np.flatnonzero(labels_cut[np.flatnonzero(labels==i)]==j))
-                oij_sq += (len(np.flatnonzero(labels_cut[np.flatnonzero(labels==i)]==j)))**2
-            apn += oij_sq/len(np.flatnonzero(labels==i))
+                total_oij += len(np.flatnonzero(labels_cut[cluster_indices]==j))
+                oij_sq += (len(np.flatnonzero(labels_cut[cluster_indices]==j)))**2
+            apn += oij_sq/len(cluster_indices)
         return 1 - (apn/total_oij)
     # Compute Average Distance (AD) stability measure
     # Correspond to the average distance between observations placed in the same cluster under both cases (the lower the better)
     elif kwargs['stability_params']['method'] == 'ad':
         ad = 0
         for i in range(n_clusters):
+            cluster_indices = np.flatnonzero(labels == i)
             for j in range(n_clusters):
-                oij = len(np.flatnonzero(labels_cut[np.flatnonzero(labels==i)]==j))
+                oij = len(np.flatnonzero(labels_cut[cluster_indices]==j))
                 if metric == 'euclidean':
-                    dij = np.mean(pairwise_distances(X[np.flatnonzero(labels==i)], X[np.flatnonzero(labels_cut==j)]))
+                    dij = np.mean(pairwise_distances(X[cluster_indices], X[np.flatnonzero(labels_cut==j)]))
                 elif metric == 'dtw':
-                    dij = np.mean(dtw_pairwise_distance(X[np.flatnonzero(labels == i)], X[np.flatnonzero(labels_cut == j)], window=kwargs['metric_params']['sakoe_chiba_radius']))
+                    dij = np.mean(dtw_pairwise_distance(X[cluster_indices], X[np.flatnonzero(labels_cut == j)], window=kwargs['metric_params']['sakoe_chiba_radius']))
                 elif metric == 'cross-correlation':
-                    dij = np.mean(pairwise_cross_correlation(X[np.flatnonzero(labels == i)], X[np.flatnonzero(labels_cut == j)]))
+                    dij = np.mean(pairwise_cross_correlation(X[cluster_indices], X[np.flatnonzero(labels_cut == j)]))
                 ad += oij*dij
         return ad/X.shape[0]
     # Compute the Average Distance between Means (ADM)

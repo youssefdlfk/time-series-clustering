@@ -53,5 +53,6 @@ def main():
     clusterer.plot_timeseries_clustering(model=model, labels=labels, algo_str=optim_algo, n_clusters=optim_n_clusters,
                                          df_insight=df_insight)
 
+
 if __name__ == '__main__':
     main()
