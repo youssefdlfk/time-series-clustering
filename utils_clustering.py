@@ -1,7 +1,7 @@
 import numpy as np
+from aeon.distances import dtw_distance
 from tslearn.metrics import cdist_normalized_cc, y_shifted_sbd_vec
 from tslearn.metrics.cycc import normalized_cc
-from aeon.distances import dtw_distance
 
 
 def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, metric, **kwargs):

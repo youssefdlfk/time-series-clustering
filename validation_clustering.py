@@ -1,9 +1,13 @@
 import logging
+
 import numpy as np
-from sklearn.preprocessing import minmax_scale
+
 from config import ClusteringConfig
-from utils_clustering import spearman_footrule_distance
 from timeseries_clustering import TimeSeriesClustering
+from utils_clustering import spearman_footrule_distance
+from validation_indices import (calinski_harabasz_index, davies_bouldin_index,
+                                dunn_index, hartigan_index, silhouette_index,
+                                stability_index)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,12 +22,36 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             raise ValueError(f'Invalid range for number of clusters: k1 and k2 have to be positive integers')
         self.k1 = config.k1
         self.k2 = config.k2
+        self.val_idx_dict = self._initialize_val_idx()
         self.nb_algos = len(self.algos_dict)
         self.nb_val_idx = len(self.val_idx_dict)
 
+    def _initialize_val_idx(self) -> dict:
+        val_idx_dict = {
+            'silhouette': {'func': silhouette_index, 'lower_better': False},
+            'dunn': {'func': dunn_index, 'lower_better': True},
+            'davies-bouldin': {'func': davies_bouldin_index, 'lower_better': True},
+            'calinski-harabasz': {'func': calinski_harabasz_index, 'lower_better': True},
+            'apn': {
+                'func': stability_index,
+                'stability_params': {'method': 'apn', 'perc_col_del': self.config.perc_col_del},
+                'lower_better': True},
+            'ad': {
+                'func': stability_index,
+                'stability_params': {'method': 'ad', 'perc_col_del': self.config.perc_col_del},
+                'lower_better': True},
+            'hartigan': {'func': hartigan_index, 'hartigan_params': {}, 'lower_better': True
+                         }
+        }
+
+        return val_idx_dict
+
     def compute_score_matrix(self) -> np.ndarray:
         """
-        Compute a score matrix which scores each combination of 'algorithm-#clusters' using the validation indices
+        Compute a score matrix which scores each combination of 'algorithm-#clusters' using the validation indices.
+        One dimension contains algorithm-#clusters combinations in this order.
+        (e.g. euclidean-2clusters, euclidean-3clusters, dtw-2clusters, dtw-3clusters, kshape-2clusters,
+        kshape-3clusters).
         :return: Score matrix
         """
         logging.info("Computing score matrix for clustering algorithms and cluster numbers...")
@@ -70,21 +98,6 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
 
         return score_matrix
 
-    def _normalize_score_matrix(self, score_matrix: np.ndarray):
-        """
-        Scale a score matrix to [0,1] along the validation scores for more accurate comparison.
-        :param score_matrix: Score matrix
-        :return: Normalized score matrix
-        """
-        # Normalize scores (scaling to [0, 1])
-        for idx in range(self.nb_val_idx):
-            score_matrix[:, idx] = minmax_scale(score_matrix[:, idx])
-
-        # Save score matrix
-        np.save('score_matrix.npy', score_matrix)
-
-        return score_matrix
-
     @staticmethod
     def _rank_algo(score_matrix: np.ndarray):
         """
@@ -95,8 +108,6 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         # Give ranking to algorithms-#clsuters for each validation index (0=best score)
         indices = np.argsort(score_matrix, axis=0)
         rank_matrix = np.argsort(indices, axis=0)
-        # Save rank matrix
-        np.save('rank_matrix.npy', rank_matrix)
         return rank_matrix
 
     def get_best_algo(self) -> tuple[str, int]:
@@ -106,15 +117,14 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         :return: A string of the winning algorithm-#clusters combination
         """
 
-        logging.info("Selecting best algorithm and #clusters based on the score matrix...")
-
         # Compute the score matrix
         score_matrix = self.compute_score_matrix()
-        # Normalize score matrix
-        score_matrix = self._normalize_score_matrix(score_matrix)
+        # Save score matrix
+        np.save('score_matrix.npy', score_matrix)
         # Compute the rank matrix
         rank_matrix = self._rank_algo(score_matrix)
-
+        # Save rank matrix
+        np.save('rank_matrix.npy', rank_matrix)
         # Each rank vector of algo-clus combination is compared to an ideal reference ranking filled with zeros
         ranking_ref = np.zeros(self.nb_val_idx)
         dist_to_ref = []

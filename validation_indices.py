@@ -1,10 +1,14 @@
 import copy
 import random
+
 import numpy as np
-from sklearn.metrics import pairwise_distances, euclidean_distances
-from aeon.distances import dtw_pairwise_distance, dtw_distance
 from aeon.clustering.averaging import elastic_barycenter_average
-from utils_clustering import pairwise_cross_correlation, distance_cross_correlation, cross_correlation_average, compute_WCSS
+from aeon.distances import dtw_distance, dtw_pairwise_distance
+from sklearn.metrics import euclidean_distances, pairwise_distances
+
+from utils_clustering import (compute_WCSS, cross_correlation_average,
+                              distance_cross_correlation,
+                              pairwise_cross_correlation)
 
 
 def silhouette_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
@@ -34,7 +38,9 @@ def silhouette_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kw
             b = np.min([np.mean(pairwise_cross_correlation(np.expand_dims(X[i], axis=0), cluster_k[j])) for j in range(n_clusters) if labels[i] != j])
             a = np.mean(pairwise_cross_correlation(np.expand_dims(X[i], axis=0), cluster_k[labels[i]]))
 
-        s_i.append((b-a)/max(b,a) if max(b,a) !=0 else 0)
+        # cross-correlation can lead to 0/0 (e.g., due to zero time series) and the distance becomes undefined
+        # here we handle it as highest dissimilarity
+        s_i.append((b-a)/max(b,a) if max(b,a) != 0 else -1)
 
     return np.mean(s_i)
 

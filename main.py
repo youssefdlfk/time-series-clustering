@@ -1,8 +1,10 @@
 import logging
 import pickle
+
 import numpy as np
-from data_processing_insight import data_proc_insight
+
 from config import ClusteringConfig
+from data_processing_insight import data_proc_insight
 from timeseries_clustering import TimeSeriesClustering
 from validation_clustering import ValidationTimeSeriesClustering
 
@@ -17,7 +19,7 @@ def main():
                               perc_col_del=0.1,
                               k1=2,
                               k2=3,
-                              down_sample_factor=28)
+                              down_sample_factor=7)
 
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")

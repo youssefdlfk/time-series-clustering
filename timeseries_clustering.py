@@ -1,10 +1,10 @@
 import logging
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-from tslearn.clustering import TimeSeriesKMeans, KShape
-from validation_indices import (silhouette_index, dunn_index, davies_bouldin_index, calinski_harabasz_index,
-                                stability_index, hartigan_index)
+from tslearn.clustering import KShape, TimeSeriesKMeans
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -14,13 +14,10 @@ class TimeSeriesClustering:
         self.X = X
         self.config = config
         self.algos_dict = self._initialize_algo_mapping()
-        self.val_idx_dict = self._initialize_val_idx()
 
     def _initialize_algo_mapping(self) -> dict:
-        # Window size as an integer
-        window_size = self.config.window_size_perc
         # Parameters for DTW metric
-        dtw_params = {'global_constraint': "sakoe_chiba", 'sakoe_chiba_radius': window_size}
+        dtw_params = {'global_constraint': "sakoe_chiba", 'sakoe_chiba_radius': self.config.window_size_perc}
         # Dictionaries of the algorithms and indices used for validation
         algos_dict = {
             'euclidean': {'name': 'K-means', 'metric': 'euclidean',
@@ -43,26 +40,6 @@ class TimeSeriesClustering:
                        }
         }
         return algos_dict
-
-    def _initialize_val_idx(self) -> dict:
-        val_idx_dict = {
-            'silhouette': {'func': silhouette_index, 'lower_better': False},
-            'dunn': {'func': dunn_index, 'lower_better': True},
-            'davies-bouldin': {'func': davies_bouldin_index, 'lower_better': True},
-            'calinski-harabasz': {'func': calinski_harabasz_index, 'lower_better': True},
-            'apn': {
-                'func': stability_index,
-                'stability_params': {'method': 'apn', 'perc_col_del': self.config.perc_col_del},
-                'lower_better': True},
-            'ad': {
-                'func': stability_index,
-                'stability_params': {'method': 'ad', 'perc_col_del': self.config.perc_col_del},
-                'lower_better': True},
-            'hartigan': {'func': hartigan_index, 'hartigan_params': {}, 'lower_better': True
-                         }
-        }
-
-        return val_idx_dict
 
     def run_timeseries_clustering(self, algo_str: str, n_clusters: int) -> tuple[TimeSeriesKMeans, np.ndarray]:
         """
