@@ -14,12 +14,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def main():
     config = ClusteringConfig(ts_length=2100,
                               csv_name="2100interpolationfulldata.csv",
-                              max_iter=1,
-                              window_size_perc=0.05,
+                              max_iter=50,
+                              window_size_perc=1,
                               perc_col_del=0.1,
                               k1=2,
-                              k2=3,
-                              down_sample_factor=7)
+                              k2=6,
+                              down_sample_factor=1)
 
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")

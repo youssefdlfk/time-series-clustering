@@ -254,10 +254,10 @@ def hartigan_index(X: np.ndarray, model_k, labels_k: np.ndarray, model_k1,
     Compute the Hartigan validity index for time series clustering, i.e. the ratio of within-cluster sum of squares for
     cluster k and for cluster k + 1
     The lower the better
-    :param labels_k1:
-    :param model_k1:
-    :param labels_k:
-    :param model_k:
+    :param labels_k1: Clustering labels for k + 1 clusters
+    :param model_k1: Clustering model for k + 1 clusters
+    :param labels_k: Clustering labels for k clusters
+    :param model_k: Clustering model for k clusters
     :param X: Torch tensor of shape [N, d], N = number of time series, d = number of samples for each
     :param labels: Numpy array of the cluster number for each data point
     :param metric: The similarity measure (euclidean, dtw or cross-correlation)
