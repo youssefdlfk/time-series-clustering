@@ -10,6 +10,8 @@ class ClusteringConfig:
     csv_name: str
     # Maximum number of iterations for training of clustering models
     max_iter: int
+    # Convergence threshold (tolerance)
+    tol: float
     # Constraining window (sakoe-chiba) on the DTW matrix as a percentage of the time series length
     window_size_perc: float
     # Percentage of data points removed in the perturbed clusters for stability measures

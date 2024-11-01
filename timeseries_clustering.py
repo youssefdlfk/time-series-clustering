@@ -23,18 +23,22 @@ class TimeSeriesClustering:
             'euclidean': {'name': 'K-means', 'metric': 'euclidean',
                           'model': lambda n_clusters: TimeSeriesKMeans(init='k-means++',
                                                                        max_iter=self.config.max_iter,
+                                                                       tol=self.config.tol,
                                                                        metric='euclidean',
                                                                        random_state=self.config.random_seed,
+                                                                       n_jobs=-1,
                                                                        n_clusters=n_clusters)},
             'dtw': {'name': 'K-means', 'metric': 'dtw', 'metric_params': dtw_params,
                     'model': lambda n_clusters: TimeSeriesKMeans(init='k-means++',
                                                                  max_iter=self.config.max_iter,
+                                                                 tol=self.config.tol,
                                                                  random_state=self.config.random_seed,
                                                                  n_jobs=-1, metric='dtw',
                                                                  metric_params=dtw_params,
                                                                  n_clusters=n_clusters)},
             'kshape': {'name': 'K-shape', 'metric': 'cross-correlation',
                        'model': lambda n_clusters: KShape(max_iter=self.config.max_iter,
+                                                          tol=self.config.tol,
                                                           random_state=self.config.random_seed,
                                                           n_clusters=n_clusters)
                        }
@@ -43,7 +47,7 @@ class TimeSeriesClustering:
 
     def run_timeseries_clustering(self, algo_str: str, n_clusters: int) -> tuple[TimeSeriesKMeans, np.ndarray]:
         """
-        Run a clustering algorithm.
+        Run clustering with a specified algorithm and number of clusters.
         :param n_clusters: Number of clusters
         :param algo_str: Key string in the algorithm dictionary referring to a specific clustering algorithm
         :return: Clustering model and labels

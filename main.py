@@ -15,6 +15,7 @@ def main():
     config = ClusteringConfig(ts_length=2100,
                               csv_name="2100interpolationfulldata.csv",
                               max_iter=30,
+                              tol=1e-5,
                               window_size_perc=1,
                               perc_col_del=0.1,
                               k1=2,
