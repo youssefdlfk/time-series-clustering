@@ -2,7 +2,21 @@ import numpy as np
 from aeon.distances import dtw_distance
 from tslearn.metrics import cdist_normalized_cc, y_shifted_sbd_vec
 from tslearn.metrics.cycc import normalized_cc
+from aeon.distances import dtw_distance, dtw_pairwise_distance
+from sklearn.metrics import euclidean_distances, pairwise_distances
 
+
+def compute_distance_matrix(X: np.ndarray, metric: str, **kwargs) -> np.ndarray:
+    n_samples = X.shape[0]
+    if metric == 'euclidean':
+        distance_matrix = pairwise_distances(X.reshape(n_samples, -1), metric='euclidean')
+    elif metric == 'dtw':
+        distance_matrix = dtw_pairwise_distance(X, X, window=kwargs['metric_params']['sakoe_chiba_radius'])
+    elif metric == 'cross-correlation':
+        distance_matrix = pairwise_cross_correlation(X, X)
+    else:
+        raise ValueError('Unsupported metric.')
+    return distance_matrix
 
 def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, metric, **kwargs):
     """

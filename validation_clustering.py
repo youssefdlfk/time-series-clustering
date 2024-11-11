@@ -4,7 +4,7 @@ import numpy as np
 
 from config import ClusteringConfig
 from timeseries_clustering import TimeSeriesClustering
-from utils_clustering import spearman_footrule_distance
+from utils_clustering import spearman_footrule_distance, compute_distance_matrix
 from validation_indices import (calinski_harabasz_index, davies_bouldin_index,
                                 dunn_index, hartigan_index, silhouette_index,
                                 stability_index)
@@ -66,8 +66,16 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             else:
                 metric_params = {}
 
+            logging.info(f"Computing for {algo_inf['metric']}...")
+
+            # compute distance matrix
+            distance_matrix = compute_distance_matrix(X=self.X, metric=algo_inf['metric'], metric_params=metric_params)
+
             # Loop over the range of clusters
             for k in range(self.k1, self.k2+1):
+
+                logging.info(f"Fit and predict model for cluster {k}...")
+
                 # Train clustering model with k clusters
                 model1 = algo_inf['model'](n_clusters=k)
                 # Fit and predict the cluster labels
@@ -75,10 +83,13 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
 
                 # Loop over the validation indices
                 for val_idx, (val_name, val_inf) in enumerate(self.val_idx_dict.items()):
+
+                    logging.info(f"Computing validation index {val_name}...")
+
                     # Specify the parameters for the stability indices (apn and ad)
                     if val_name in ['apn', 'ad']:
                         score = val_inf['func'](X=self.X, model=model1, labels=labels1,
-                                                metric=algo_inf['metric'], metric_params=metric_params,
+                                                distance_matrix=distance_matrix, metric_params=metric_params,
                                                 stability_params=val_inf['stability_params'])
                     # Specify a model with k+1 clusters required for the hartigan index
                     elif val_name == 'hartigan':
@@ -88,7 +99,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                                         metric=algo_inf['metric'], metric_params=metric_params)
                     # Score is computed the same for all other indices
                     else:
-                        score = val_inf['func'](X=self.X, model=model1, labels=labels1,
+                        score = val_inf['func'](X=self.X, model=model1, labels=labels1, distance_matrix=distance_matrix,
                                                 metric=algo_inf['metric'], metric_params=metric_params)
                     # For silhouette, we make it negative such that the lower the index, the better the clustering
                     if not val_inf['lower_better']:
@@ -109,6 +120,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         indices = np.argsort(score_matrix, axis=0)
         rank_matrix = np.argsort(indices, axis=0)
         return rank_matrix
+
 
     def get_best_algo(self) -> tuple[str, int]:
         """

@@ -11,79 +11,84 @@ from utils_clustering import (compute_WCSS, cross_correlation_average,
                               pairwise_cross_correlation)
 
 
-def silhouette_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
+def silhouette_index(X: np.ndarray, labels: np.ndarray, **kwargs) -> float:
     """
     Compute Silhouette index for a time series clustering. The higher the better. Within [-1, 1].
+    :param distance_matrix:
     :param X: Tensor of time series data
-    :param model: Clustering model from tslearn package
     :param labels: Array of the cluster each data point belongs to
-    :param metric: Similarity measure (euclidean, dtw or cross-correlation)
-    :param kwargs: Additional parameters for DTW metric
     :return: Silhouette index
     """
-    # n_clusters is the number of clusters
-    n_clusters = model.n_clusters
-    # cluster_k is a list of indices of data points in cluster k
-    cluster_k = [X[labels == k] for k in range(n_clusters)]
-    s_i = []
-    for i in range(X.shape[0]):
-        if metric == 'euclidean':
-            b = np.min([np.mean(pairwise_distances(np.expand_dims(X[i], axis=0), cluster_k[j])) for j in range(n_clusters) if labels[i] != j])
-            a = np.sum(pairwise_distances(np.expand_dims(X[i], axis=0), cluster_k[labels[i]])) * (1 / (cluster_k[labels[i]].shape[0] - 1))
-        elif metric == 'dtw':
-            b = np.min([np.mean(dtw_pairwise_distance(np.expand_dims(X[i], axis=0), cluster_k[j],
-                                                      window=kwargs['metric_params']['sakoe_chiba_radius'])) for j in range(n_clusters) if labels[i] != j])
-            a = np.mean(dtw_pairwise_distance(np.expand_dims(X[i], axis=0), cluster_k[labels[i]],  window=kwargs['metric_params']['sakoe_chiba_radius']))
-        elif metric == 'cross-correlation':
-            b = np.min([np.mean(pairwise_cross_correlation(np.expand_dims(X[i], axis=0), cluster_k[j])) for j in range(n_clusters) if labels[i] != j])
-            a = np.mean(pairwise_cross_correlation(np.expand_dims(X[i], axis=0), cluster_k[labels[i]]))
+    n_samples = X.shape[0]
+    n_clusters = len(np.unique(labels))
 
-        # cross-correlation can lead to 0/0 (e.g., due to zero time series) and the distance becomes undefined
-        # here we handle it as neutral contribution
-        s_i.append((b-a)/max(b,a) if max(b,a) != 0 else 0)
+    # Initialize arrays to store a and b values
+    a = np.zeros(n_samples)
+    b = np.full(n_samples, np.inf)
 
-    return np.mean(s_i)
-
-
-def dunn_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
-    """
-    Compute the Dunn index of a time series clustering, i.e. the ratio of the minimum inter-cluster distance and the
-    maximum intra-cluster distance. The higher the better.
-    :param X: Torch tensor of shape [N, d], N = number of time series, d = number of samples for each
-    :param labels: Numpy array of the cluster number for each data point
-    :param metric: The similarity measure (euclidean, dtw or cross-correlation)
-    :param kwargs: Additional constraint parameters for DTW metric (optional)
-    :return: Dunn index
-    """
-    # n_clusters is the number of clusters
-    n_clusters = model.n_clusters
-    # cluster_k is a list of indices of data points in cluster k
-    cluster_k = [X[labels == k] for k in range(n_clusters)]
-    # permutation indices
-    joint_indices = [(i,j) for i in range(n_clusters) for j in range(i) if i != j]
-    deltas, Deltas, dist = [], [], 0
-    # compute min inter-cluster distance
-    for (i, j) in joint_indices:
-        if metric == 'euclidean':
-            dist = pairwise_distances(cluster_k[i], cluster_k[j])
-        elif metric == 'dtw':
-            dist = dtw_pairwise_distance(cluster_k[i], cluster_k[j], window=kwargs['metric_params']['sakoe_chiba_radius'])
-        elif metric == 'cross-correlation':
-            dist = pairwise_cross_correlation(cluster_k[i], cluster_k[j])
-        deltas.append(np.min(dist[np.nonzero(dist)]))
-    numerator = np.min(deltas)
-    # compute max intra-cluster distance
+    # For each cluster, compute a and b
     for k in range(n_clusters):
-        if metric == 'euclidean':
-            dist = pairwise_distances(cluster_k[k])
-        elif metric == 'dtw':
-            dist = dtw_pairwise_distance(cluster_k[k])
-        elif metric == 'cross-correlation':
-            dist = pairwise_cross_correlation(cluster_k[k], cluster_k[k])
-        Deltas.append(np.max(dist))
-    denominator = np.max(Deltas)
-    DI = numerator/denominator
-    return DI
+        # Indices of samples in cluster k
+        cluster_k_indices = np.where(labels == k)[0]
+
+        # Compute intra-cluster distances (a)
+        if len(cluster_k_indices) > 1:
+            intra_distances = kwargs['distance_matrix'][np.ix_(cluster_k_indices, cluster_k_indices)]
+            # Exclude self-distances by setting the diagonal to NaN
+            np.fill_diagonal(intra_distances, np.nan)
+            a[cluster_k_indices] = np.nanmean(intra_distances, axis=1)
+        else:
+            # For clusters with one sample, a is zero
+            a[cluster_k_indices] = 0
+
+        # Compute nearest-cluster distances (b)
+        for l in range(n_clusters):
+            if k != l:
+                cluster_l_indices = np.where(labels == l)[0]
+                inter_distances = kwargs['distance_matrix'][np.ix_(cluster_k_indices, cluster_l_indices)]
+                mean_inter_distances = np.mean(inter_distances, axis=1)
+                b[cluster_k_indices] = np.minimum(b[cluster_k_indices], mean_inter_distances)
+
+    # Compute the silhouette scores
+    s = (b - a) / np.maximum(a, b)
+    # Handle cases where a and b are zero
+    s[np.isnan(s)] = 0
+    # Return the mean silhouette score
+    return np.mean(s)
+
+
+def dunn_index(labels: np.ndarray, **kwargs) -> float:
+    """
+    Compute the Dunn index of a time series clustering with optimized computations.
+    """
+    n_clusters = len(np.unique(labels))
+
+    # Initialize lists to store intra-cluster and inter-cluster distances
+    intra_dists = []
+    inter_dists = []
+
+    # Compute maximum intra-cluster distances
+    for k in range(n_clusters):
+        cluster_indices = np.where(labels == k)[0]
+        if len(cluster_indices) > 1:
+            intra_cluster_dist = kwargs['distance_matrix'][np.ix_(cluster_indices, cluster_indices)]
+            np.fill_diagonal(intra_cluster_dist, np.nan)
+            intra_dists.append(np.nanmax(intra_cluster_dist))
+        else:
+            intra_dists.append(0)
+
+    # Compute minimum inter-cluster distances
+    for i in range(n_clusters):
+        cluster_i_indices = np.where(labels == i)[0]
+        for j in range(i + 1, n_clusters):
+            cluster_j_indices = np.where(labels == j)[0]
+            inter_cluster_dist = kwargs['distance_matrix'][np.ix_(cluster_i_indices, cluster_j_indices)]
+            inter_dists.append(np.min(inter_cluster_dist))
+
+    numerator = np.min(inter_dists)
+    denominator = np.max(intra_dists)
+    dunn_index = numerator / denominator if denominator != 0 else 0
+    return dunn_index
 
 
 def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
@@ -125,6 +130,66 @@ def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, 
         sumdis += np.max(ratios)
     DB = sumdis/n_clusters
     return DB
+
+
+def stability_index(X: np.ndarray, model, labels: np.ndarray, distance_matrix: np.ndarray, **kwargs) -> float:
+    """
+    Compute stability measures for time series clustering by deleting a percentage of the dataset columns and comparing the
+    perturbed clustering with the unperturbed one. The lower, the better.
+    :param distance_matrix:
+    :param X:
+    :param model:
+    :param labels:
+    :param kwargs:
+    :return:
+
+    Reference: Alboukadel Kassambara (2017). "Practical Guide To Cluster Analysis in R".
+    """
+    n_clusters = len(np.unique(labels))
+    # Construct the perturbed dataset as original dataset with a percentage of datapoints removed
+    n_col = X.shape[1]
+    n_col_removed = int(n_col*kwargs['stability_params']['perc_col_del'])
+    n_col_keep = n_col - n_col_removed
+    random.seed(42)  # Set a seed for reproducibility
+    idx_col_keep = np.sort(random.sample(range(X.shape[1]), n_col_keep))
+    X_data_cut = copy.deepcopy(X[:, idx_col_keep])
+    model_cut = copy.deepcopy(model)
+    labels_cut = model_cut.fit_predict(X_data_cut)
+    # Compute Average Distance (AD) stability measure
+    # Correspond to the average distance between observations placed in the same cluster under both cases (the lower the better)
+    if kwargs['stability_params']['method'] == 'ad':
+        # Compute the AD index
+        ad = 0
+        total_oij = 0
+        for i in range(n_clusters):
+            cluster_i_indices = np.where(labels == i)[0]
+            for j in range(n_clusters):
+                cluster_j_indices_cut = np.where(labels_cut == j)[0]
+                oij = np.intersect1d(cluster_i_indices, cluster_j_indices_cut).size
+                if oij > 0:
+                    dij = np.mean(distance_matrix[np.ix_(cluster_i_indices, cluster_j_indices_cut)])
+                    ad += oij * dij
+                    total_oij += oij
+        return ad/X.shape[0]
+
+    # Compute Average Proportion of Non-overlap (APN) stability measure
+    # Correspond to the proportion observations not placed in the same cluster after perturbation (the lower the better)
+    elif kwargs['stability_params']['method'] == 'apn':
+        # Compute the Average Proportion of Non-overlap (APN)
+        total_oij = 0
+        apn_sum = 0
+        for i in range(n_clusters):
+            cluster_indices = np.where(labels == i)[0]
+            labels_cut_cluster = labels_cut[cluster_indices]
+            counts = np.bincount(labels_cut_cluster, minlength=n_clusters)
+            total_in_cluster = len(cluster_indices)
+            apn_sum += np.sum(counts ** 2) / total_in_cluster
+            total_oij += np.sum(counts)
+        apn = 1 - (apn_sum / total_oij)
+        return apn
+
+    else:
+        raise ValueError('Unsupported metric.')
 
 
 def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
@@ -173,81 +238,6 @@ def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: st
     return (B/W)*scaling_factor
 
 
-def stability_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
-    """
-    Compute stability measures for time series clustering by deleting a percentage of the dataset columns and comparing the
-    perturbed clustering with the unperturbed one. The lower, the better.
-    :param X:
-    :param model:
-    :param labels:
-    :param perc_col_del:
-    :param method:
-    :param metric:
-    :param kwargs:
-    :return:
-
-    Reference: Alboukadel Kassambara (2017). "Practical Guide To Cluster Analysis in R".
-    """
-    # Number of clusters
-    n_clusters = len(np.unique(labels))
-    # Get centroids of the clusters
-    centroids = [model.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters)]
-    # Construct the perturbed dataset as original dataset with a percentage of datapoints removed
-    n_col = X.shape[1]
-    n_col_removed = int(n_col*kwargs['stability_params']['perc_col_del'])
-    n_col_keep = n_col - n_col_removed
-    random.seed(42)  # Set a seed for reproducibility
-    idx_col_keep = np.sort(random.sample(range(X.shape[1]), n_col_keep))
-    X_data_cut = copy.deepcopy(X[:, idx_col_keep])
-    model_cut = copy.deepcopy(model)
-    labels_cut = model_cut.fit_predict(X_data_cut)
-
-    # Compute Average Proportion of Non-overlap (APN) stability measure
-    # Correspond to the proportion observations not placed in the same cluster after perturbation (the lower the better)
-    if kwargs['stability_params']['method'] == 'apn':
-        apn, total_oij = 0, 0
-        for i in range(n_clusters):
-            oij_sq = 0
-            cluster_indices = np.flatnonzero(labels == i)
-            for j in range(n_clusters):
-                total_oij += len(np.flatnonzero(labels_cut[cluster_indices]==j))
-                oij_sq += (len(np.flatnonzero(labels_cut[cluster_indices]==j)))**2
-            apn += oij_sq/len(cluster_indices)
-        return 1 - (apn/total_oij)
-    # Compute Average Distance (AD) stability measure
-    # Correspond to the average distance between observations placed in the same cluster under both cases (the lower the better)
-    elif kwargs['stability_params']['method'] == 'ad':
-        ad = 0
-        for i in range(n_clusters):
-            cluster_indices = np.flatnonzero(labels == i)
-            for j in range(n_clusters):
-                oij = len(np.flatnonzero(labels_cut[cluster_indices]==j))
-                if metric == 'euclidean':
-                    dij = np.mean(pairwise_distances(X[cluster_indices], X[np.flatnonzero(labels_cut==j)]))
-                elif metric == 'dtw':
-                    dij = np.mean(dtw_pairwise_distance(X[cluster_indices], X[np.flatnonzero(labels_cut == j)], window=kwargs['metric_params']['sakoe_chiba_radius']))
-                elif metric == 'cross-correlation':
-                    dij = np.mean(pairwise_cross_correlation(X[cluster_indices], X[np.flatnonzero(labels_cut == j)]))
-                ad += oij*dij
-        return ad/X.shape[0]
-    # Compute the Average Distance between Means (ADM)
-    # Correspond to average distance between cluster centroids for observations placed in the same cluster under both cases (the lower the better)
-    elif kwargs['stability_params']['method'] == 'adm':
-        centroids_cut = [model_cut.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters)]
-        adm = 0
-        for i in range(n_clusters):
-            for j in range(n_clusters):
-                oij = len(np.flatnonzero(labels_cut[np.flatnonzero(labels==i)]==j))
-                if metric == 'euclidean':
-                    dij = euclidean_distances(centroids[i], centroids_cut[j])
-                elif metric == 'dtw':
-                    dij = dtw_distance(centroids[i], centroids_cut[j], window=kwargs['metric_params']['sakoe_chiba_radius'])
-                elif metric == 'cross-correlation':
-                    dij = distance_cross_correlation(centroids[i], centroids_cut[j])
-                adm += oij*dij
-        return adm/X.shape[0]
-
-
 def hartigan_index(X: np.ndarray, model_k, labels_k: np.ndarray, model_k1,
                    labels_k1: np.ndarray, metric: str, **kwargs) -> float:
     """
@@ -283,79 +273,3 @@ def hartigan_index(X: np.ndarray, model_k, labels_k: np.ndarray, model_k1,
     # Multiplying factor
     factor = X.shape[0] - n_clusters1 - 1
     return (WCSS1/WCSS2 - 1)/factor
-
-
-# def krzanoswki_lai_index(X, model1, labels1, model2, labels2, model3, labels3, metric, **kwargs):
-#     """
-#     Compute the Krzanoswki-Lai validity index for time series clustering
-#     The lower the better
-#     """
-#     # compute WCSS1 for configuration with k-1 clusters
-#     n_clusters1 = model1.n_clusters
-#     # cluster_k is a list of indices of data points in cluster k
-#     cluster_k1 = [X[labels1 == k] for k in range(n_clusters1)]
-#     # Get centroids
-#     centroids1 = [model1.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters1)]
-#     # Compute WCSS for model with k clusters
-#     WCSS1 = 0
-#     for i in range(n_clusters1):
-#         variance = 0
-#         for datapoint in cluster_k1[i]:
-#             if metric == 'euclidean':
-#                 variance += ((datapoint - centroids1[i])**2).sum().item()
-#             elif metric == 'dtw':
-#                 variance += dtw_distance(datapoint, centroids1[i], window=kwargs['metric_params']['sakoe_chiba_radius']) **2
-#             elif metric == 'cross-correlation':
-#                 variance += distance_cross_correlation(datapoint, centroids1[i])
-#         WCSS1 += variance
-#     # Number of clusters for clustering 2
-#     n_clusters2 = len(np.unique(labels2))
-#     # cluster_k2 is a list of indices of data points for k+1 clusters
-#     cluster_k2 = [X[labels2 == k] for k in range(n_clusters2)]
-#     centroids2 = [model2.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters2)]
-#     # Compute WCSS for model with k+1 clusters
-#     WCSS2 = 0
-#     for i in range(n_clusters2):
-#         variance = 0
-#         for datapoint in cluster_k2[i]:
-#             if metric == 'euclidean':
-#                 variance += ((datapoint - centroids2[i])**2).sum().item()
-#             elif metric == 'dtw':
-#                 variance += dtw_distance(datapoint, centroids2[i], window=kwargs['metric_params']['sakoe_chiba_radius']) **2
-#             elif metric == 'cross-correlation':
-#                 variance += distance_cross_correlation(datapoint, centroids2[i])
-#         WCSS2 += variance
-#     # compute WCSS3 for configuration with k+1 clusters
-#     n_clusters3 = len(np.unique(labels3))
-#     # cluster_k is a list of indices of data points in cluster k
-#     cluster_k3 = [X[labels3 == k] for k in range(n_clusters3)]
-#     centroids3 = [model3.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters3)]
-#     WCSS3 = 0
-#     for i in range(n_clusters3):
-#         variance = 0
-#         for datapoint in cluster_k3[i]:
-#             if metric == 'euclidean':
-#                 variance += ((datapoint - centroids3[i])**2).sum().item()
-#             elif metric == 'dtw':
-#                 variance += dtw_distance(datapoint, centroids3[i], window=kwargs['metric_params']['sakoe_chiba_radius']) **2
-#             elif metric == 'cross-correlation':
-#                 variance += distance_cross_correlation(datapoint, centroids3[i])
-#         WCSS3 += variance
-#     KL = (WCSS2/WCSS3 - 1)/(WCSS1/WCSS2 - 1)
-#     return KL
-
-
-# def k_nn_consistency_index(X, labels, n_neighbors, metric, metric_params):
-#     """
-#     Compute a connectivity measure for a time series clustering using k-nearest neighbours. The higher the better.
-#     """
-#     model = KNeighborsTimeSeries(n_neighbors=n_neighbors, metric=metric, metric_params=metric_params)
-#     model.fit(X)
-#     k_nearest_indices = model.kneighbors(X, n_neighbors=n_neighbors)[1]
-#     conn_index = 0
-#     for i in range(X.shape[0]):
-#         for j in range(n_neighbors):
-#             if labels[k_nearest_indices[i][j]] != labels[i]:
-#                 conn_index += 1/(j+1)
-#
-#     return conn_index

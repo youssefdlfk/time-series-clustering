@@ -19,8 +19,8 @@ def main():
                               window_size_perc=1,
                               perc_col_del=0.1,
                               k1=2,
-                              k2=6,
-                              down_sample_factor=1)
+                              k2=3,
+                              down_sample_factor=42)
 
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")
