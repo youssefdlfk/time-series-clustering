@@ -13,7 +13,7 @@ class ClusteringConfig:
     # Convergence threshold (tolerance)
     tol: float
     # Constraining window (sakoe-chiba) on the DTW matrix as a percentage of the time series length
-    window_size_perc: float
+    window_constraint: any
     # Percentage of data points removed in the perturbed clusters for stability measures
     perc_col_del: float
     # Range of the number of clusters to explore for validation

@@ -16,7 +16,7 @@ def main():
                               csv_name="2100interpolationfulldata.csv",
                               max_iter=30,
                               tol=1e-5,
-                              window_size_perc=1,
+                              window_constraint=None,
                               perc_col_del=0.1,
                               k1=2,
                               k2=3,

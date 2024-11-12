@@ -2,9 +2,9 @@ import copy
 import random
 
 import numpy as np
-from aeon.clustering.averaging import elastic_barycenter_average
-from aeon.distances import dtw_distance, dtw_pairwise_distance
 from sklearn.metrics import euclidean_distances, pairwise_distances
+from tslearn.metrics import cdist_dtw, dtw
+from tslearn.barycenters import dtw_barycenter_averaging
 
 from utils_clustering import (compute_WCSS, cross_correlation_average,
                               distance_cross_correlation,
@@ -119,9 +119,12 @@ def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, 
                 Delta_j = np.mean(pairwise_distances(cluster_k[j], centroids[j]))
                 delta_ij = euclidean_distances(centroids[i], centroids[j])
             elif metric == 'dtw':
-                Delta_i = np.mean(dtw_pairwise_distance(cluster_k[i], centroids[i], window=kwargs['metric_params']['sakoe_chiba_radius']))
-                Delta_j = np.mean(dtw_pairwise_distance(cluster_k[j], centroids[j], window=kwargs['metric_params']['sakoe_chiba_radius']))
-                delta_ij = dtw_pairwise_distance(centroids[i], centroids[j], window=kwargs['metric_params']['sakoe_chiba_radius'])
+                Delta_i = np.mean(cdist_dtw(cluster_k[i], centroids[i], global_constraint='sakoe_chiba',
+                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius']))
+                Delta_j = np.mean(cdist_dtw(cluster_k[j], centroids[j], global_constraint='sakoe_chiba',
+                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius']))
+                delta_ij = cdist_dtw(centroids[i], centroids[j], global_constraint='sakoe_chiba',
+                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'])
             elif metric == 'cross-correlation':
                 Delta_i = np.mean(pairwise_cross_correlation(cluster_k[i], centroids[i]))
                 Delta_j = np.mean(pairwise_cross_correlation(cluster_k[j], centroids[j]))
@@ -219,19 +222,20 @@ def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: st
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
             mu_i = centroids[i]
-            B += n_i * ((mu_i - mu) ** 2).sum().item()
+            B += n_i * np.sum((mu_i - mu) ** 2)
     elif metric == 'dtw':
-        mu = elastic_barycenter_average(np.vstack(centroids), metric).squeeze(0)
+        mu = dtw_barycenter_averaging(np.vstack(centroids)).squeeze(-1)
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
             mu_i = centroids[i]
-            B += n_i * dtw_distance(mu_i, mu, window=kwargs['metric_params']['sakoe_chiba_radius']) ** 2
+            B += n_i * (dtw(mu_i, mu, global_constraint='sakoe_chiba',
+                           sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius']) ** 2)
     elif metric == 'cross-correlation':
         mu = cross_correlation_average(np.expand_dims(np.vstack(centroids), axis=-1)).squeeze(-1)
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
             mu_i = centroids[i]
-            B += n_i * distance_cross_correlation(mu_i, mu) ** 2
+            B += n_i * (distance_cross_correlation(mu_i, mu) ** 2)
 
     # within-cluster dispersion
     W = compute_WCSS(n_clusters=n_clusters, cluster_k=cluster_k, centroids=centroids, metric=metric, **kwargs)

@@ -17,7 +17,7 @@ class TimeSeriesClustering:
 
     def _initialize_algo_mapping(self) -> dict:
         # Parameters for DTW metric
-        dtw_params = {'global_constraint': "sakoe_chiba", 'sakoe_chiba_radius': self.config.window_size_perc}
+        dtw_params = {'global_constraint': "sakoe_chiba", 'sakoe_chiba_radius': self.config.window_constraint}
         # Dictionaries of the algorithms and indices used for validation
         algos_dict = {
             'euclidean': {'name': 'K-means', 'metric': 'euclidean',

@@ -1,9 +1,7 @@
 import numpy as np
-from aeon.distances import dtw_distance
-from tslearn.metrics import cdist_normalized_cc, y_shifted_sbd_vec
+from tslearn.metrics import cdist_normalized_cc, y_shifted_sbd_vec, cdist_dtw, dtw
 from tslearn.metrics.cycc import normalized_cc
-from aeon.distances import dtw_distance, dtw_pairwise_distance
-from sklearn.metrics import euclidean_distances, pairwise_distances
+from sklearn.metrics import pairwise_distances
 
 
 def compute_distance_matrix(X: np.ndarray, metric: str, **kwargs) -> np.ndarray:
@@ -11,12 +9,14 @@ def compute_distance_matrix(X: np.ndarray, metric: str, **kwargs) -> np.ndarray:
     if metric == 'euclidean':
         distance_matrix = pairwise_distances(X.reshape(n_samples, -1), metric='euclidean')
     elif metric == 'dtw':
-        distance_matrix = dtw_pairwise_distance(X, X, window=kwargs['metric_params']['sakoe_chiba_radius'])
+        distance_matrix = cdist_dtw(X, X, global_constraint='sakoe_chiba',
+                                    sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'])
     elif metric == 'cross-correlation':
         distance_matrix = pairwise_cross_correlation(X, X)
     else:
         raise ValueError('Unsupported metric.')
     return distance_matrix
+
 
 def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, metric, **kwargs):
     """
@@ -28,16 +28,17 @@ def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, metric
     :param kwargs: Additional metric parameters
     :return: The Within-Cluster Sum of Squared distances
     """
-    WCSS = 0
+    WCSS = 0.0
     for i in range(n_clusters):
-        variance = 0
+        variance = 0.0
         for datapoint in cluster_k[i]:
             if metric == 'euclidean':
-                variance += ((datapoint - centroids[i])**2).sum().item()
+                variance += np.sum((datapoint - centroids[i])**2)
             elif metric == 'dtw':
-                variance += dtw_distance(datapoint, centroids[i], window=kwargs['metric_params']['sakoe_chiba_radius'])**2
+                variance += dtw(datapoint, centroids[i], global_constraint='sakoe_chiba',
+                                sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'])**2
             elif metric == 'cross-correlation':
-                variance += distance_cross_correlation(datapoint, centroids[i])
+                variance += distance_cross_correlation(datapoint, centroids[i])**2
         WCSS += variance
     return WCSS
 
