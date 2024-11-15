@@ -66,7 +66,6 @@ def dunn_index(labels: np.ndarray, **kwargs) -> float:
     # Initialize lists to store intra-cluster and inter-cluster distances
     intra_dists = []
     inter_dists = []
-    tslearn.clustering.silhouette_score()
     # Compute maximum intra-cluster distances
     for k in range(n_clusters):
         cluster_indices = np.where(labels == k)[0]
