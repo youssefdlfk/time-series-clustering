@@ -9,10 +9,10 @@ def compute_distance_matrix(X: np.ndarray, metric: str, **kwargs) -> np.ndarray:
     if metric == 'euclidean':
         distance_matrix = pairwise_distances(X.reshape(n_samples, -1), metric='euclidean')
     elif metric == 'dtw':
-        distance_matrix = cdist_dtw(X, X, global_constraint='sakoe_chiba',
+        distance_matrix = cdist_dtw(X, global_constraint='sakoe_chiba',
                                     sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'])
     elif metric == 'cross-correlation':
-        distance_matrix = pairwise_cross_correlation(X, X)
+        distance_matrix = pairwise_cross_correlation(X, X, self_similarity=True)
     else:
         raise ValueError('Unsupported metric.')
     return distance_matrix
@@ -70,7 +70,7 @@ def distance_cross_correlation(X1: np.ndarray, X2: np.ndarray):
     return normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1)).max()
 
 
-def pairwise_cross_correlation(X1: np.ndarray, X2: np.ndarray):
+def pairwise_cross_correlation(X1: np.ndarray, X2: np.ndarray, self_similarity):
     """
     Compute cross-correlation matrix between two sets of time series
     :param X1: First dataset
@@ -83,7 +83,7 @@ def pairwise_cross_correlation(X1: np.ndarray, X2: np.ndarray):
     #     for j in range(dim_X[1]):
     #         corr_matrix[i][j] = np.correlate(X1[i], X2[j])
     return cdist_normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1), np.ones(X1.shape[0])*-1,
-                               np.ones(X2.shape[0])*-1, False)
+                               np.ones(X2.shape[0])*-1, self_similarity)
 
 
 def cross_correlation_average(dataset, max_iters=10, tol=1e-4):

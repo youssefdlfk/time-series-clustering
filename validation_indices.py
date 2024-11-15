@@ -2,6 +2,7 @@ import copy
 import random
 
 import numpy as np
+import tslearn.clustering
 from sklearn.metrics import euclidean_distances, pairwise_distances
 from tslearn.metrics import cdist_dtw, dtw
 from tslearn.barycenters import dtw_barycenter_averaging
@@ -14,7 +15,6 @@ from utils_clustering import (compute_WCSS, cross_correlation_average,
 def silhouette_index(X: np.ndarray, labels: np.ndarray, **kwargs) -> float:
     """
     Compute Silhouette index for a time series clustering. The higher the better. Within [-1, 1].
-    :param distance_matrix:
     :param X: Tensor of time series data
     :param labels: Array of the cluster each data point belongs to
     :return: Silhouette index
@@ -66,7 +66,7 @@ def dunn_index(labels: np.ndarray, **kwargs) -> float:
     # Initialize lists to store intra-cluster and inter-cluster distances
     intra_dists = []
     inter_dists = []
-
+    tslearn.clustering.silhouette_score()
     # Compute maximum intra-cluster distances
     for k in range(n_clusters):
         cluster_indices = np.where(labels == k)[0]
@@ -126,9 +126,9 @@ def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, 
                 delta_ij = cdist_dtw(centroids[i], centroids[j], global_constraint='sakoe_chiba',
                                             sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'])
             elif metric == 'cross-correlation':
-                Delta_i = np.mean(pairwise_cross_correlation(cluster_k[i], centroids[i]))
-                Delta_j = np.mean(pairwise_cross_correlation(cluster_k[j], centroids[j]))
-                delta_ij = pairwise_cross_correlation(centroids[i], centroids[j])
+                Delta_i = np.mean(pairwise_cross_correlation(cluster_k[i], centroids[i], self_similarity=False))
+                Delta_j = np.mean(pairwise_cross_correlation(cluster_k[j], centroids[j], self_similarity=False))
+                delta_ij = pairwise_cross_correlation(centroids[i], centroids[j], self_similarity=False)
             ratios.append((Delta_i + Delta_j)/delta_ij)
         sumdis += np.max(ratios)
     DB = sumdis/n_clusters
