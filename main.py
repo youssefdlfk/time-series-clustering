@@ -20,7 +20,7 @@ def main():
                               perc_col_del=0.1,
                               k1=2,
                               k2=6,
-                              down_sample_factor=3)
+                              down_sample_factor=2)
 
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")
@@ -53,7 +53,7 @@ def main():
     # Step 7: Plot time series clusters with centroids and % insights of best model
     clusterer.plot_timeseries_clustering(model=model, labels=labels, algo_str=optim_algo, n_clusters=optim_n_clusters,
                                          df_insight=df_insight)
-
+    logging.info("Done!")
 
 if __name__ == '__main__':
     main()
