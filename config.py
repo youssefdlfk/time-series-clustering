@@ -12,8 +12,12 @@ class ClusteringConfig:
     max_iter: int
     # Convergence threshold (tolerance)
     tol: float
-    # Constraining window (sakoe-chiba) on the DTW matrix as a percentage of the time series length
-    window_constraint: any
+    # Constraint type (sakoe-chiba, itakura, none)
+    global_constraint: any
+    # Constraining radius for sako-chiba (radius, none)
+    constraint_radius: any
+    # Constraining slope for itakura (slope, none)
+    constraint_slope: any
     # Percentage of data points removed in the perturbed clusters for stability measures
     perc_col_del: float
     # Range of the number of clusters to explore for validation

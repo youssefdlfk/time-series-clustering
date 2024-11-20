@@ -9,8 +9,9 @@ def compute_distance_matrix(X: np.ndarray, metric: str, **kwargs) -> np.ndarray:
     if metric == 'euclidean':
         distance_matrix = pairwise_distances(X.reshape(n_samples, -1), metric='euclidean')
     elif metric == 'dtw':
-        distance_matrix = cdist_dtw(X, global_constraint='sakoe_chiba',
-                                    sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'])
+        distance_matrix = cdist_dtw(X, global_constraint=kwargs['metric_params']['global_constraint'],
+                                    sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+                                    itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])
     elif metric == 'cross-correlation':
         distance_matrix = pairwise_cross_correlation(X, X, self_similarity=True)
     else:
@@ -35,8 +36,9 @@ def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, metric
             if metric == 'euclidean':
                 variance += np.sum((datapoint - centroids[i])**2)
             elif metric == 'dtw':
-                variance += dtw(datapoint, centroids[i], global_constraint='sakoe_chiba',
-                                sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'])**2
+                variance += dtw(datapoint, centroids[i], global_constraint=kwargs['metric_params']['global_constraint'],
+                                sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+                                itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])**2
             elif metric == 'cross-correlation':
                 variance += distance_cross_correlation(datapoint, centroids[i])**2
         WCSS += variance

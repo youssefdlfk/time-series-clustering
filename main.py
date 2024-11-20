@@ -11,16 +11,19 @@ from validation_clustering import ValidationTimeSeriesClustering
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 def main():
     config = ClusteringConfig(ts_length=2100,
                               csv_name="2100interpolationfulldata.csv",
                               max_iter=30,
                               tol=1e-5,
-                              window_constraint=None,
+                              global_constraint=None,
+                              constraint_radius=None,
+                              constraint_slope=None,
                               perc_col_del=0.1,
                               k1=2,
                               k2=6,
-                              down_sample_factor=2)
+                              down_sample_factor=1)
 
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")

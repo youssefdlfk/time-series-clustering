@@ -2,7 +2,6 @@ import copy
 import random
 
 import numpy as np
-import tslearn.clustering
 from sklearn.metrics import euclidean_distances, pairwise_distances
 from tslearn.metrics import cdist_dtw, dtw
 from tslearn.barycenters import dtw_barycenter_averaging
@@ -53,13 +52,12 @@ def silhouette_index(X: np.ndarray, labels: np.ndarray, **kwargs) -> float:
     s = (b - a) / np.maximum(a, b)
     # Handle cases where a and b are zero
     s[np.isnan(s)] = 0
-    # Return the mean silhouette score
     return np.mean(s)
 
 
 def dunn_index(labels: np.ndarray, **kwargs) -> float:
     """
-    Compute the Dunn index of a time series clustering with optimized computations.
+    Compute the Dunn index of a time series clustering with optimized computations. The higher the better.
     """
     n_clusters = len(np.unique(labels))
 
@@ -118,12 +116,15 @@ def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, 
                 Delta_j = np.mean(pairwise_distances(cluster_k[j], centroids[j]))
                 delta_ij = euclidean_distances(centroids[i], centroids[j])
             elif metric == 'dtw':
-                Delta_i = np.mean(cdist_dtw(cluster_k[i], centroids[i], global_constraint='sakoe_chiba',
-                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius']))
-                Delta_j = np.mean(cdist_dtw(cluster_k[j], centroids[j], global_constraint='sakoe_chiba',
-                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius']))
-                delta_ij = cdist_dtw(centroids[i], centroids[j], global_constraint='sakoe_chiba',
-                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'])
+                Delta_i = np.mean(cdist_dtw(cluster_k[i], centroids[i], global_constraint=kwargs['metric_params']['global_constraint'],
+                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+                                            itakura_max_slope=kwargs['metric_params']['itakura_max_slope']))
+                Delta_j = np.mean(cdist_dtw(cluster_k[j], centroids[j], global_constraint=kwargs['metric_params']['global_constraint'],
+                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+                                            itakura_max_slope=kwargs['metric_params']['itakura_max_slope']))
+                delta_ij = cdist_dtw(centroids[i], centroids[j], global_constraint=kwargs['metric_params']['global_constraint'],
+                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+                                            itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])
             elif metric == 'cross-correlation':
                 Delta_i = np.mean(pairwise_cross_correlation(cluster_k[i], centroids[i], self_similarity=False))
                 Delta_j = np.mean(pairwise_cross_correlation(cluster_k[j], centroids[j], self_similarity=False))
@@ -227,8 +228,9 @@ def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: st
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
             mu_i = centroids[i]
-            B += n_i * (dtw(mu_i, mu, global_constraint='sakoe_chiba',
-                           sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius']) ** 2)
+            B += n_i * (dtw(mu_i, mu, global_constraint=kwargs['metric_params']['global_constraint'],
+                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+                            itakura_max_slope=kwargs['metric_params']['itakura_max_slope']) ** 2)
     elif metric == 'cross-correlation':
         mu = cross_correlation_average(np.expand_dims(np.vstack(centroids), axis=-1)).squeeze(-1)
         for i in range(n_clusters):
@@ -275,4 +277,4 @@ def hartigan_index(X: np.ndarray, model_k, labels_k: np.ndarray, model_k1,
     WCSS2 = compute_WCSS(n_clusters=n_clusters2, cluster_k=cluster_k2, centroids=centroids2, metric=metric, **kwargs)
     # Multiplying factor
     factor = X.shape[0] - n_clusters1 - 1
-    return (WCSS1/WCSS2 - 1)/factor
+    return (WCSS1/WCSS2 - 1)*factor

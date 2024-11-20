@@ -66,7 +66,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             else:
                 metric_params = {}
 
-            logging.info(f"Computing for {algo_inf['metric']}...")
+            logging.info(f"Computing distance matrix for {algo_inf['metric']}...")
 
             # compute distance matrix
             distance_matrix = compute_distance_matrix(X=self.X, metric=algo_inf['metric'], metric_params=metric_params)
