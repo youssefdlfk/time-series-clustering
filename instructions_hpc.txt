@@ -1,0 +1,13 @@
+module load cluster/genius/login
+module load Python/3.11.3-GCCcore-12.3.0
+module load SciPy-bundle/2023.07-gfbf-2023a
+module load  PyTorch/2.1.2-foss-2023a
+module load  matplotlib/3.7.2-gfbf-2023a
+module load JupyterLab/4.0.5-GCCcore-12.3.0
+ pip install --user tslearn ipykernel
+python -c "import torch; import matplotlib; import tslearn; import pandas; import numpy; print('All packages work')"
+echo 'export PYTHONPATH=/apps/leuven/rocky8/skylake/2023a/software/SciPy-bundle/2023.07-gfbf-2023a/lib/python3.11/site-packages/:${PYTHONPATH}' >> ~/.bashrc
+echo 'export PYTHONPATH=/apps/leuven/rocky8/skylake/2023a/software/PyTorch/2.1.2-foss-2023a/lib/python3.11/site-packages/:${PYTHONPATH}' >> ~/.bashrc
+echo 'export PYTHONPATH=/apps/leuven/rocky8/skylake/2023a/software/matplotlib/3.7.2-gfbf-2023a/lib/python3.11/site-packages/:${PYTHONPATH}' >> ~/.bashrc
+source ~/.bashrc
+python -m ipykernel install --user --name timeseries_clustering_kernel --display-name "Python (timeseries_clustering_kernel)"
