@@ -70,6 +70,10 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
 
             # compute distance matrix
             distance_matrix = compute_distance_matrix(X=self.X, metric=algo_inf['metric'], metric_params=metric_params)
+
+            logging.info(f"Saving distance matrix for {algo_inf['metric']}...")
+
+            # save matrix
             np.save('dist_mat_'+algo_inf['metric'], distance_matrix)
 
             # Loop over the range of clusters
@@ -107,6 +111,8 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                         score *= -1
                     # The score is implemented in the corresponding matrix element
                     score_matrix[(k - self.k1) + algo_idx * (self.k2 + 1 - self.k1), val_idx] = score
+
+            del distance_matrix
 
         return score_matrix
 
