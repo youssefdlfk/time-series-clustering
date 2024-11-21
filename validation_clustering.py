@@ -70,6 +70,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
 
             # compute distance matrix
             distance_matrix = compute_distance_matrix(X=self.X, metric=algo_inf['metric'], metric_params=metric_params)
+            np.save('dist_mat_'+algo_inf['metric'], distance_matrix)
 
             # Loop over the range of clusters
             for k in range(self.k1, self.k2+1):
