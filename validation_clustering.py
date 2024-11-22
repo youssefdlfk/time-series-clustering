@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-
+import pickle
 from config import ClusteringConfig
 from timeseries_clustering import TimeSeriesClustering
 from utils_clustering import spearman_footrule_distance, compute_distance_matrix
@@ -76,15 +76,29 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             # save matrix
             np.save('dist_mat_'+algo_inf['metric'], distance_matrix)
 
-            # Loop over the range of clusters
-            for k in range(self.k1, self.k2+1):
+            # model and labels dictionary
+            mod_lab_dict = {}
+
+            # Loop over the range of clusters (and one more for the Hartigan index)
+            for k in range(self.k1, self.k2 + 2):
 
                 logging.info(f"Fit and predict model for cluster {k}...")
 
                 # Train clustering model with k clusters
-                model1 = algo_inf['model'](n_clusters=k)
+                model_k = algo_inf['model'](n_clusters=k)
                 # Fit and predict the cluster labels
-                labels1 = model1.fit_predict(self.X)
+                labels_k = model_k.fit_predict(self.X)
+
+                # Add model and labels to list
+                mod_lab_dict[k] = (model_k, labels_k)
+
+            logging.info("Saving models and labels dictionary...")
+            with open(f'mod_lab_dict_'+algo_inf['metric']+'.pkl', 'wb') as file:
+                pickle.dump(mod_lab_dict, file)
+
+            for k in range(self.k1, self.k2 + 1):
+
+                logging.info(f"Computing validation indices for cluster {k}...")
 
                 # Loop over the validation indices
                 for val_idx, (val_name, val_inf) in enumerate(self.val_idx_dict.items()):
@@ -93,24 +107,27 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
 
                     # Specify the parameters for the stability indices (apn and ad)
                     if val_name in ['apn', 'ad']:
-                        score = val_inf['func'](X=self.X, model=model1, labels=labels1,
+                        score = val_inf['func'](X=self.X, model=mod_lab_dict[k][0], labels=mod_lab_dict[k][1],
                                                 distance_matrix=distance_matrix, metric_params=metric_params,
                                                 stability_params=val_inf['stability_params'])
                     # Specify a model with k+1 clusters required for the hartigan index
                     elif val_name == 'hartigan':
-                        model1_k1 = algo_inf['model'](n_clusters=k+1)
-                        val_inf['func'](X=self.X, model_k=model1, labels_k=labels1,
-                                        model_k1=model1_k1, labels_k1=model1_k1.fit_predict(self.X),
+                        val_inf['func'](X=self.X, model_k=mod_lab_dict[k][0], labels_k=mod_lab_dict[k][1],
+                                        model_k1=mod_lab_dict[k+1][0], labels_k1=mod_lab_dict[k+1][1],
                                         metric=algo_inf['metric'], metric_params=metric_params)
                     # Score is computed the same for all other indices
                     else:
-                        score = val_inf['func'](X=self.X, model=model1, labels=labels1, distance_matrix=distance_matrix,
+                        score = val_inf['func'](X=self.X, model=mod_lab_dict[k][0], labels=mod_lab_dict[k][1], distance_matrix=distance_matrix,
                                                 metric=algo_inf['metric'], metric_params=metric_params)
-                    # For silhouette, we make it negative such that the lower the index, the better the clustering
+                    # For indices that are not better when lower, we make it negative such that it is
                     if not val_inf['lower_better']:
                         score *= -1
                     # The score is implemented in the corresponding matrix element
                     score_matrix[(k - self.k1) + algo_idx * (self.k2 + 1 - self.k1), val_idx] = score
+
+                    # Save score matrix progression
+                    logging.info("Saving score matrix progression...")
+                    np.save('score_matrix.npy', score_matrix)
 
             del distance_matrix
 
