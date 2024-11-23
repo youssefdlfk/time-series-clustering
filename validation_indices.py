@@ -135,10 +135,11 @@ def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, 
     return DB
 
 
-def stability_index(X: np.ndarray, model, labels: np.ndarray, distance_matrix: np.ndarray, **kwargs) -> float:
+def stability_index(X: np.ndarray, labels: np.ndarray, labels_cut: np.ndarray, distance_matrix: np.ndarray, **kwargs) -> float:
     """
     Compute stability measures for time series clustering by deleting a percentage of the dataset columns and comparing the
     perturbed clustering with the unperturbed one. The lower, the better.
+    :param labels_cut:
     :param distance_matrix:
     :param X:
     :param model:
@@ -149,15 +150,6 @@ def stability_index(X: np.ndarray, model, labels: np.ndarray, distance_matrix: n
     Reference: Alboukadel Kassambara (2017). "Practical Guide To Cluster Analysis in R".
     """
     n_clusters = len(np.unique(labels))
-    # Construct the perturbed dataset as original dataset with a percentage of datapoints removed
-    n_col = X.shape[1]
-    n_col_removed = int(n_col*kwargs['stability_params']['perc_col_del'])
-    n_col_keep = n_col - n_col_removed
-    random.seed(42)  # Set a seed for reproducibility
-    idx_col_keep = np.sort(random.sample(range(X.shape[1]), n_col_keep))
-    X_data_cut = copy.deepcopy(X[:, idx_col_keep])
-    model_cut = copy.deepcopy(model)
-    labels_cut = model_cut.fit_predict(X_data_cut)
     # Compute Average Distance (AD) stability measure
     # Correspond to the average distance between observations placed in the same cluster under both cases (the lower the better)
     if kwargs['stability_params']['method'] == 'ad':

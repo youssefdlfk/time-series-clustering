@@ -1,5 +1,6 @@
 import logging
-
+import random
+import copy
 import numpy as np
 import pickle
 from config import ClusteringConfig
@@ -71,13 +72,13 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             # compute distance matrix
             distance_matrix = compute_distance_matrix(X=self.X, metric=algo_inf['metric'], metric_params=metric_params)
 
-            logging.info(f"Saving distance matrix for {algo_inf['metric']}...")
-
             # save matrix
+            logging.info(f"Saving distance matrix for {algo_inf['metric']}...")
             np.save('dist_mat_'+algo_inf['metric'], distance_matrix)
 
             # model and labels dictionary
             mod_lab_dict = {}
+            lab_cut_dict = {}
 
             # Loop over the range of clusters (and one more for the Hartigan index)
             for k in range(self.k1, self.k2 + 2):
@@ -92,10 +93,18 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                 # Add model and labels to list
                 mod_lab_dict[k] = (model_k, labels_k)
 
+                if k < self.k2 + 2:
+                    labels_k_cut = self._get_perturbed_labels(self.X, model_k, labels_k,
+                                                              stability_params=self.val_idx_dict
+                                                              ['apn']['stability_params'])
+                    lab_cut_dict[k] = labels_k_cut
+
+
             logging.info("Saving models and labels dictionary...")
             with open(f'mod_lab_dict_'+algo_inf['metric']+'.pkl', 'wb') as file:
                 pickle.dump(mod_lab_dict, file)
 
+            # Loop over the range of clusters
             for k in range(self.k1, self.k2 + 1):
 
                 logging.info(f"Computing validation indices for cluster {k}...")
@@ -107,7 +116,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
 
                     # Specify the parameters for the stability indices (apn and ad)
                     if val_name in ['apn', 'ad']:
-                        score = val_inf['func'](X=self.X, model=mod_lab_dict[k][0], labels=mod_lab_dict[k][1],
+                        score = val_inf['func'](X=self.X, labels=mod_lab_dict[k][1], labels_cut=lab_cut_dict[k],
                                                 distance_matrix=distance_matrix, metric_params=metric_params,
                                                 stability_params=val_inf['stability_params'])
                     # Specify a model with k+1 clusters required for the hartigan index
@@ -117,7 +126,8 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                                         metric=algo_inf['metric'], metric_params=metric_params)
                     # Score is computed the same for all other indices
                     else:
-                        score = val_inf['func'](X=self.X, model=mod_lab_dict[k][0], labels=mod_lab_dict[k][1], distance_matrix=distance_matrix,
+                        score = val_inf['func'](X=self.X, model=mod_lab_dict[k][0], labels=mod_lab_dict[k][1],
+                                                distance_matrix=distance_matrix,
                                                 metric=algo_inf['metric'], metric_params=metric_params)
                     # For indices that are not better when lower, we make it negative such that it is
                     if not val_inf['lower_better']:
@@ -128,10 +138,25 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                     # Save score matrix progression
                     logging.info("Saving score matrix progression...")
                     np.save('score_matrix.npy', score_matrix)
+                    logging.info("Progression saved!")
 
             del distance_matrix
 
         return score_matrix
+
+    @staticmethod
+    def _get_perturbed_labels(X, model, labels, **kwargs):
+        n_clusters = len(np.unique(labels))
+        # Construct the perturbed dataset as original dataset with a percentage of datapoints removed
+        n_col = X.shape[1]
+        n_col_removed = int(n_col * kwargs['stability_params']['perc_col_del'])
+        n_col_keep = n_col - n_col_removed
+        random.seed(42)  # Set a seed for reproducibility
+        idx_col_keep = np.sort(random.sample(range(X.shape[1]), n_col_keep))
+        X_data_cut = copy.deepcopy(X[:, idx_col_keep])
+        model_cut = copy.deepcopy(model)
+        labels_cut = model_cut.fit_predict(X_data_cut)
+        return labels_cut
 
     @staticmethod
     def _rank_algo(score_matrix: np.ndarray):
