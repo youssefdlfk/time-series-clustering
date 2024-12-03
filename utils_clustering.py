@@ -149,3 +149,11 @@ def spearman_footrule_distance(X: np.ndarray, Y: np.ndarray) -> float:
     for i in range(d):
         dist_XY += abs(X[i]-Y[i])
     return dist_XY/max_d
+
+
+def initialize_models_label_dict(nb_algos, k1, k2):
+    dico = {}
+    for algos in range(nb_algos):
+        for k in range(k1, k2):
+            dico[algos] = {k: ()}
+    return dico

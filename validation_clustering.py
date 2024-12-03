@@ -3,6 +3,7 @@ import random
 import copy
 import numpy as np
 import pickle
+import collections
 from config import ClusteringConfig
 from timeseries_clustering import TimeSeriesClustering
 from utils_clustering import spearman_footrule_distance, compute_distance_matrix
@@ -60,6 +61,9 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         # Initialize empty array for the score matrix
         score_matrix = np.empty((self.nb_algos*(self.k2+1-self.k1), self.nb_val_idx))
 
+        # Initialize dictionary of models and labels for all algos and #clusters
+        models_labels_dict = collections.defaultdict(dict)
+
         # Loop over the clustering algorithms
         for algo_idx, (_, algo_inf) in enumerate(self.algos_dict.items()):
             if algo_inf['metric'] == 'dtw':
@@ -99,10 +103,13 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                                                               ['apn']['stability_params'])
                     lab_cut_dict[k] = labels_k_cut
 
-
-            logging.info("Saving models and labels dictionary...")
-            with open(f'mod_lab_dict_'+algo_inf['metric']+'.pkl', 'wb') as file:
-                pickle.dump(mod_lab_dict, file)
+                # Update dictionary
+                models_labels_dict[algo_inf['metric']][k] = (model_k, labels_k)
+                # Saving progress
+                logging.info("Saving models and labels progress...")
+                with open(f'models_labels_dict.pkl', 'wb') as file:
+                    pickle.dump(models_labels_dict, file)
+                logging.info("Dictionary saved!")
 
             # Loop over the range of clusters
             for k in range(self.k1, self.k2 + 1):

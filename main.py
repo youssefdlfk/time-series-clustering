@@ -22,13 +22,13 @@ def main():
                               constraint_slope=None,
                               perc_col_del=0.1,
                               k1=2,
-                              k2=5,
-                              down_sample_factor=1)
+                              k2=4,
+                              down_sample_factor=2)
 
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")
     X_data, df_insight = data_proc_insight(csv_name=config.csv_name, timeseries_length=config.ts_length,
-                                           down_sample_factor=config.down_sample_factor)
+                                           down_sample_factor=config.down_sample_factor, filter='insight')
 
     # Step 2: Initialize Clustering and Validation
     clusterer = TimeSeriesClustering(X=X_data, config=config)
