@@ -1,6 +1,6 @@
 # Time Series Clustering and Validation Framework
 
-A robust Python framework designed to cluster and evaluate time series data efficiently and flexibly using advanced clustering methods and validation indices.
+A robust Python framework designed to cluster and evaluate time series data using various clustering methods and validation indices.
 
 ## 📌 Overview
 
@@ -15,7 +15,7 @@ This project clusters time series data using:
   - **Dynamic Time Warping (DTW)**
   - **Cross-Correlation**
 
-It evaluates clustering quality with several internal validation indices:
+It evaluates clustering quality with several validation indices:
 
 - **Silhouette Index**
 - **Dunn Index**
