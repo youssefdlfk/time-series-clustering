@@ -52,13 +52,14 @@ def clusters_labels_to_indices(labels: np.ndarray):
     :param labels: Cluster labels array
     :return: Cluster indices array
     """
-    indices_all = []
-    for cluster_idx in np.unique(labels):
-        cluster_idx_list = []
-        for data_idx in range(len(labels)):
-            if labels[data_idx] == cluster_idx:
-                cluster_idx_list.append(data_idx)
-        indices_all.append(cluster_idx_list)
+    #indices_all = []
+    #for cluster_idx in np.unique(labels):
+    #    cluster_idx_list = []
+    #    for data_idx in range(len(labels)):
+    #        if labels[data_idx] == cluster_idx:
+    #            cluster_idx_list.append(data_idx)
+    #    indices_all.append(cluster_idx_list)
+    indices_all = [np.where(labels == cluster_idx)[0].tolist() for cluster_idx in np.unique(labels)]
     return indices_all
 
 

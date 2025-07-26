@@ -4,6 +4,9 @@ import torch
 import copy
 import pickle
 import logging
+import config
+from utils_clustering import spearman_footrule_distance
+
 
 def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor: int, filter: str) -> tuple[np.ndarray, pd.DataFrame]:
     """
@@ -17,7 +20,8 @@ def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor:
     try:
         df = pd.read_csv(csv_name)
     except FileNotFoundError as e:
-        print(e)
+        logging.error(e)
+        raise SystemExit(f"File {csv_name} not found. Exiting.")
 
     # Check if required columns are present
     required_columns = ['Id', 'Trial', 'InterpRating', 'solution_strategy_response.keys']
@@ -76,10 +80,10 @@ def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor:
 
 def save_outputs_to_csv(df_insight):
     # Load data
-    optim_labels = np.load('results_hpc_downsampling2/optim_labels.npy')
-    score_matrix = np.load('results_hpc_downsampling2/score_matrix.npy')
-    rank_matrix = np.load('results_hpc_downsampling2/rank_matrix.npy')
-    with open('results_hpc_downsampling2/optim_model.pkl', 'rb') as f:
+    optim_labels = np.load('optim_labels.npy')
+    score_matrix = np.load('score_matrix.npy')
+    rank_matrix = np.load('rank_matrix.npy')
+    with open('optim_model.pkl', 'rb') as f:
         optim_model = pickle.load(f)
 
     # Some columns and rows
@@ -98,11 +102,23 @@ def save_outputs_to_csv(df_insight):
     rank_df.insert(loc=0, column=algo_clus_col, value=algo_clus_rows)
     cluster_center_df = pd.DataFrame(optim_model.cluster_centers_.squeeze(-1).transpose(), columns=['cluster0', 'cluster1'])
 
+    # final ranking
+    nb_val_idx = 7
+    ranking_ref = np.zeros(nb_val_idx)
+    dist_to_ref = []
+    for algo_clus_idx in range(score_matrix.shape[0]):
+        dist_to_ref.append(spearman_footrule_distance(ranking_ref, rank_matrix[algo_clus_idx, :]))
+    dist_to_ref_df = pd.DataFrame(dist_to_ref, columns=['Distance to ideal vector'])
+    dist_to_ref_df.insert(loc=0, column=algo_clus_col, value=algo_clus_rows)
+
+
+
     # Saving to .csv files
-    labels_df.to_csv('cluster_labels.csv')
-    score_df.to_csv('score_matrix.csv')
-    rank_df.to_csv('rank_matrix.csv')
-    cluster_center_df.to_csv('cluster_centers.csv')
+    labels_df.to_csv(config.labels_output_file, index=False)
+    score_df.to_csv(config.score_matrix_output_file, index=False)
+    rank_df.to_csv(config.rank_matrix_output_file, index=False)
+    dist_to_ref_df.to_csv(config.dist_to_ref_output_file, index=False)
+    cluster_center_df.to_csv(config.cluster_centers_output_file, index=False)
 
 
 

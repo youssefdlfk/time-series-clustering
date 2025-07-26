@@ -142,12 +142,13 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                     # The score is implemented in the corresponding matrix element
                     score_matrix[(k - self.k1) + algo_idx * (self.k2 + 1 - self.k1), val_idx] = score
 
-                    # Save score matrix progression
-                    logging.info("Saving score matrix progression...")
-                    np.save('score_matrix.npy', score_matrix)
-                    logging.info("Progression saved!")
 
-            del distance_matrix
+            # Save score matrix
+            logging.info("Saving final score matrix...")
+            np.save('score_matrix.npy', score_matrix)
+            with open('models_labels_dict.pkl', 'wb') as file:
+                pickle.dump(models_labels_dict, file)
+            logging.info("Final score matrix and dictionary saved!")
 
         return score_matrix
 
