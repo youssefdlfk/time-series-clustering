@@ -1,8 +1,47 @@
-# Time series clustering and validation
+# Time Series Clustering and Validation Framework
 
-## About
+A robust Python framework designed to cluster and evaluate time series data using various clustering methods and validation indices.
 
-This project provides a comprehensive framework for clustering time series data using K-means and K-Shape as algorithms (from the tslearn package), and 3 different metrics as similarity measures: Euclidean distance, Dynamic Time Warping and Cross-correlation. Additionally, the validation of clustering quality is based on a variety of indices, including the silhouette index, Dunn index, Davies-Bouldin index, and more.
+## 📌 Overview
 
-Originally designed to analyze time series data collected from a psychological experiment on the phenomenon of Insight, the framework is customizable and can be adapted to various time series datasets and clustering configurations.
+This project clusters time series data using:
 
+- **Clustering algorithms**:
+  - **K-Means**
+  - **K-Shape**
+
+- **Similarity measures**:
+  - **Euclidean Distance**
+  - **Dynamic Time Warping (DTW)**
+  - **Cross-Correlation**
+
+It evaluates clustering quality with several validation indices:
+
+- **Silhouette Index**
+- **Dunn Index**
+- **Davies-Bouldin Index**
+- **Calinski-Harabasz Index**
+- **Average Proportion of Non-overlap (APN)**
+- **Average Distance (AD)**
+- **Hartigan Index**
+
+The best combination of clustering algorithm and the number of clusters is determined by measuring the proximity to a reference ranking vector using the **Spearman footrule distance**.
+
+Originally developed for analyzing psychological experiment data (Insight phenomena), this framework generalizes easily to other time series datasets.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.8+
+- Libraries specified in `requirements.txt` (notably `tslearn`, `numpy`, `pandas`, `scikit-learn`, and `matplotlib`)
+
+### Installation
+
+Clone the repository:
+
+```bash
+git clone <your_repository_url>
+cd <your_repository_folder>
