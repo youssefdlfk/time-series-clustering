@@ -46,7 +46,7 @@ def main():
     # Step 8: Plot time series clusters with centroids and % insights of best model
     clusterer.plot_timeseries_clustering(model=model, labels=labels, algo_str=optim_algo, n_clusters=optim_n_clusters,
                                          df_insight=df_insight)
-    # Step 5: Saving all validation outputs
+    # Step 9: Save all outputs
     logging.info("Saving all validation results in csv files...")
     save_outputs_to_csv(df_insight, config, clusterer, validator)
 

@@ -1,6 +1,3 @@
-import copy
-import random
-
 import numpy as np
 from sklearn.metrics import euclidean_distances, pairwise_distances
 from tslearn.metrics import cdist_dtw, dtw

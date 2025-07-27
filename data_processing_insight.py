@@ -4,7 +4,6 @@ import torch
 import copy
 import pickle
 import logging
-from config import ClusteringConfig as config
 from utils_clustering import spearman_footrule_distance
 
 
@@ -101,7 +100,7 @@ def save_outputs_to_csv(df_insight, config, clusterer, validator):
     rank_df.insert(loc=0, column=algo_clus_col, value=algo_clus_rows)
     cluster_center_df = pd.DataFrame(optim_model.cluster_centers_.squeeze(-1).transpose(), columns=clus_cent_col)
 
-    # final ranking
+    # Final ranking
     nb_val_idx = len(indices_cols)
     ranking_ref = np.zeros(nb_val_idx)
     dist_to_ref = []
