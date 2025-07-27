@@ -128,7 +128,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                                                 stability_params=val_inf['stability_params'])
                     # Specify a model with k+1 clusters required for the hartigan index
                     elif val_name == 'hartigan':
-                        val_inf['func'](X=self.X, model_k=mod_lab_dict[k][0], labels_k=mod_lab_dict[k][1],
+                        score = val_inf['func'](X=self.X, model_k=mod_lab_dict[k][0], labels_k=mod_lab_dict[k][1],
                                         model_k1=mod_lab_dict[k+1][0], labels_k1=mod_lab_dict[k+1][1],
                                         metric=algo_inf['metric'], metric_params=metric_params)
                     # Score is computed the same for all other indices
@@ -208,7 +208,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         # Get the corresponding algorithm name and number of clusters
         algos_clus_dict = {}
         for algo_idx, (algo_str, _) in enumerate(self.algos_dict.items()):
-            for k in range(self.k1, self.k2):
+            for k in range(self.k1, self.k2+1):
                 algos_clus_dict[(k-self.k1)+algo_idx*(self.k2+1-self.k1)] = (algo_str, k)
         return algos_clus_dict[best_algo_idx]
 

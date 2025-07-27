@@ -101,37 +101,47 @@ def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, 
     # n_clusters is the number of clusters
     n_clusters = model.n_clusters
     # cluster_k is a list of indices of data points in cluster k
-    cluster_k = [X[labels == k] for k in range(n_clusters)]
-    # permutation indices
-    joint_indices = [(i, j) for i in range(n_clusters) for j in range(i) if i != j]
-    ratios, sumdis = [], 0
-    # get centroids
+    clusters = [X[labels == k] for k in range(n_clusters)]
+    # get centroids as 2D (1, T) for pairwise routines
     centroids = [np.expand_dims(model.cluster_centers_[k].squeeze(-1), axis=0) for k in range(n_clusters)]
-    # compute distances
-    Delta_i, Delta_j, delta_ij = 0, 0, 0
-    for k in range(n_clusters):
-        for (i, j) in joint_indices:
-            if metric == 'euclidean':
-                Delta_i = np.mean(pairwise_distances(cluster_k[i], centroids[i]))
-                Delta_j = np.mean(pairwise_distances(cluster_k[j], centroids[j]))
-                delta_ij = euclidean_distances(centroids[i], centroids[j])
-            elif metric == 'dtw':
-                Delta_i = np.mean(cdist_dtw(cluster_k[i], centroids[i], global_constraint=kwargs['metric_params']['global_constraint'],
-                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
-                                            itakura_max_slope=kwargs['metric_params']['itakura_max_slope']))
-                Delta_j = np.mean(cdist_dtw(cluster_k[j], centroids[j], global_constraint=kwargs['metric_params']['global_constraint'],
-                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
-                                            itakura_max_slope=kwargs['metric_params']['itakura_max_slope']))
-                delta_ij = cdist_dtw(centroids[i], centroids[j], global_constraint=kwargs['metric_params']['global_constraint'],
-                                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
-                                            itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])
-            elif metric == 'cross-correlation':
-                Delta_i = np.mean(pairwise_cross_correlation(cluster_k[i], centroids[i], self_similarity=False))
-                Delta_j = np.mean(pairwise_cross_correlation(cluster_k[j], centroids[j], self_similarity=False))
-                delta_ij = pairwise_cross_correlation(centroids[i], centroids[j], self_similarity=False)
-            ratios.append((Delta_i + Delta_j)/delta_ij)
-        sumdis += np.max(ratios)
-    DB = sumdis/n_clusters
+    # stack centroids as (k, T) for pairwise centroid–centroid distances
+    stacked_centroids = np.vstack([c for c in centroids])  # shape: (k, T)
+
+    # --- Δ(X_i): intracluster scatter for each cluster i ---
+    Delta = np.zeros(n_clusters)
+    for i in range(n_clusters):
+        if metric == 'euclidean':
+            # mean distance of points to centroid i
+            Delta[i] = np.mean(pairwise_distances(clusters[i], centroids[i]))
+        elif metric == 'dtw':
+            Delta[i] = np.mean(
+                cdist_dtw(clusters[i], centroids[i],
+                          global_constraint=kwargs['metric_params']['global_constraint'],
+                          sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+                          itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])
+            )
+        elif metric == 'cross-correlation':
+            Delta[i] = np.mean(pairwise_cross_correlation(clusters[i], centroids[i], self_similarity=False))
+        else:
+            raise ValueError('Unsupported metric.')
+
+    # --- δ(X_i, X_j): centroid–centroid distances for all pairs (i, j) ---
+    if metric == 'euclidean':
+        delta = euclidean_distances(stacked_centroids, stacked_centroids)  # shape (k, k)
+    elif metric == 'dtw':
+        delta = cdist_dtw(stacked_centroids, stacked_centroids,
+                          global_constraint=kwargs['metric_params']['global_constraint'],
+                          sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+                          itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])
+    elif metric == 'cross-correlation':
+        delta = pairwise_cross_correlation(stacked_centroids, stacked_centroids, self_similarity=True)
+    else:
+        raise ValueError('Unsupported metric.')
+
+    # --- S_ij = (Δ_i + Δ_j) / δ_ij for all i != j; DB = mean_i max_j S_ij ---
+    S = (Delta[:, None] + Delta[None, :]) / delta  # shape (k, k)
+    np.fill_diagonal(S, -np.inf)  # exclude j == i for the max
+    DB = np.mean(np.max(S, axis=1))
     return DB
 
 
