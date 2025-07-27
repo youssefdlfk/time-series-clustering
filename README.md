@@ -28,20 +28,3 @@ It evaluates clustering quality with several validation indices:
 The best combination of clustering algorithm and the number of clusters is determined by measuring the proximity to a reference ranking vector using the **Spearman footrule distance**.
 
 Originally developed for analyzing psychological experiment data (Insight phenomena), this framework generalizes easily to other time series datasets.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.8+
-- Libraries specified in `requirements.txt` (notably `tslearn`, `numpy`, `pandas`, `scikit-learn`, and `matplotlib`)
-
-### Installation
-
-Clone the repository:
-
-```bash
-git clone <your_repository_url>
-cd <your_repository_folder>
