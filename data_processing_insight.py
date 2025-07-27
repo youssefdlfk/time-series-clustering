@@ -4,7 +4,7 @@ import torch
 import copy
 import pickle
 import logging
-import config
+from config import ClusteringConfig as config
 from utils_clustering import spearman_footrule_distance
 
 
@@ -78,7 +78,7 @@ def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor:
 
 
 
-def save_outputs_to_csv(df_insight):
+def save_outputs_to_csv(df_insight, config, clusterer, validator):
     # Load data
     optim_labels = np.load('optim_labels.npy')
     score_matrix = np.load('score_matrix.npy')
@@ -87,10 +87,9 @@ def save_outputs_to_csv(df_insight):
         optim_model = pickle.load(f)
 
     # Some columns and rows
-    indices_cols = ['silhouette', 'dunn', 'davies-bouldin', 'calinski-harabasz', 'apn', 'ad', 'hartigan']
-    algo_clus_rows = ['euclidean_2clusters', 'euclidean_3clusters', 'euclidean_4clusters', 'euclidean_5clusters',
-             'euclidean_6clusters', 'dtw_2clusters', 'dtw_3clusters', 'dtw_4clusters', 'dtw_5clusters', 'dtw_6clusters',
-             'kshape_2clusters', 'kshape_3clusters', 'kshape_4clusters', 'kshape_5clusters', 'kshape_6clusters']
+    indices_cols = list(validator.val_idx_dict.keys())
+    algo_clus_rows = [algo + '_' + str(n_cluster) + 'clusters' for algo in clusterer.algos_dict.keys() for n_cluster in range(config.k1, config.k2+1)]
+    clus_cent_col =['cluster' + str(nb) for nb in range(optim_model.n_clusters)]
     algo_clus_col = 'algorithm_cluster'
 
     # Dataframes
@@ -100,18 +99,16 @@ def save_outputs_to_csv(df_insight):
     labels_df['Cluster'] = optim_labels
     rank_df = pd.DataFrame(rank_matrix, columns=indices_cols)
     rank_df.insert(loc=0, column=algo_clus_col, value=algo_clus_rows)
-    cluster_center_df = pd.DataFrame(optim_model.cluster_centers_.squeeze(-1).transpose(), columns=['cluster0', 'cluster1'])
+    cluster_center_df = pd.DataFrame(optim_model.cluster_centers_.squeeze(-1).transpose(), columns=clus_cent_col)
 
     # final ranking
-    nb_val_idx = 7
+    nb_val_idx = len(indices_cols)
     ranking_ref = np.zeros(nb_val_idx)
     dist_to_ref = []
     for algo_clus_idx in range(score_matrix.shape[0]):
         dist_to_ref.append(spearman_footrule_distance(ranking_ref, rank_matrix[algo_clus_idx, :]))
     dist_to_ref_df = pd.DataFrame(dist_to_ref, columns=['Distance to ideal vector'])
     dist_to_ref_df.insert(loc=0, column=algo_clus_col, value=algo_clus_rows)
-
-
 
     # Saving to .csv files
     labels_df.to_csv(config.labels_output_file, index=False)

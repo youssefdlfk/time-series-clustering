@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 
 def main():
-    config = ClusteringConfig(...)
+    config = ClusteringConfig
 
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")
@@ -48,9 +48,10 @@ def main():
                                          df_insight=df_insight)
     # Step 5: Saving all validation outputs
     logging.info("Saving all validation results in csv files...")
-    save_outputs_to_csv(df_insight)
+    save_outputs_to_csv(df_insight, config, clusterer, validator)
 
     logging.info("Done!")
+
 
 if __name__ == '__main__':
     main()
