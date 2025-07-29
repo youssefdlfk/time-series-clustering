@@ -2,16 +2,28 @@ import numpy as np
 from tslearn.metrics import cdist_normalized_cc, y_shifted_sbd_vec, cdist_dtw, dtw
 from tslearn.metrics.cycc import normalized_cc
 from sklearn.metrics import pairwise_distances
+from scipy.spatial.distance import pdist, squareform
+from dtaidistance import dtw
 
 
 def compute_distance_matrix(X: np.ndarray, metric: str, **kwargs) -> np.ndarray:
+    """
+    Compute distance matrix for each metric,
+    :param X:
+    :param metric:
+    :param kwargs:
+    :return:
+    """
     n_samples = X.shape[0]
     if metric == 'euclidean':
-        distance_matrix = pairwise_distances(X.reshape(n_samples, -1), metric='euclidean')
+        # distance_matrix = pairwise_distances(X.reshape(n_samples, -1), metric='euclidean', n_jobs=-1)
+        distance_matrix = squareform(pdist(X.reshape(n_samples, -1), metric='euclidean'))
     elif metric == 'dtw':
-        distance_matrix = cdist_dtw(X, global_constraint=kwargs['metric_params']['global_constraint'],
-                                    sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
-                                    itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])
+        # distance_matrix = cdist_dtw(X, global_constraint=kwargs['metric_params']['global_constraint'],
+        #                            sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
+        #                            itakura_max_slope=kwargs['metric_params']['itakura_max_slope'], n_jobs=-1)
+        distance_matrix = dtw.distance_matrix_fast(X, window=kwargs['metric_params']['sakoe_chiba_radius'], use_c=True,
+                                                   parallel=True)
     elif metric == 'cross-correlation':
         distance_matrix = pairwise_cross_correlation(X, X, self_similarity=True)
     else:
@@ -80,11 +92,12 @@ def pairwise_cross_correlation(X1: np.ndarray, X2: np.ndarray, self_similarity):
     :param X2: Second dataset
     :return: Normalized pairwise cross correlation measure
     """
-    # dim_X = (X1.shape[0], X2.shape[0])
-    # corr_matrix = np.zeros(dim_X)
-    # for i in range(dim_X[0]):
-    #     for j in range(dim_X[1]):
-    #         corr_matrix[i][j] = np.correlate(X1[i], X2[j])
+    # Zero‑lag normalized cross‑corr
+    # Xc = X - X.mean(axis=1, keepdims=True)
+    # norms = np.linalg.norm(Xc, axis=1, keepdims=True)
+    # Xn = Xc / norms
+    # sim = Xn @ Xn.T  # very fast
+    # dist = 1 - sim
     return cdist_normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1), np.ones(X1.shape[0])*-1,
                                np.ones(X2.shape[0])*-1, self_similarity)
 

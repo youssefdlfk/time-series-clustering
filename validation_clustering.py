@@ -97,7 +97,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                 # Add model and labels to list
                 mod_lab_dict[k] = (model_k, labels_k)
 
-                if k < self.k2 + 2:
+                if k < self.k2 + 1:
                     labels_k_cut = self._get_perturbed_labels(self.X, model_k, labels_k,
                                                               stability_params=self.val_idx_dict
                                                               ['apn']['stability_params'])
