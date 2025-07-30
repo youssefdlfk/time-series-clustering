@@ -24,7 +24,7 @@ class ClusteringConfig:
     k1: int = 2
     k2: int = 6
     # Down sampling factor of time series to manage memory usage for DTW
-    down_sample_factor: int = 2
+    down_sample_factor: int = 100
     # Random seed for reproducibility
     random_seed: int = 42
     # Output files
