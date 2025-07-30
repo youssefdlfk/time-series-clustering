@@ -146,7 +146,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             row = row_offset + (k - self.k1)
             score_matrix[row, idx_col] = score
 
-            return score_matrix
+        return score_matrix
 
     @staticmethod
     def _save_results(score_matrix, models_labels_dict):

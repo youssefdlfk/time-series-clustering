@@ -3,7 +3,7 @@ import pickle
 
 import numpy as np
 
-from config import ClusteringConfig
+from config import default_config as config
 from ts_clustering.data_processing_insight  import data_proc_insight, save_outputs_to_csv
 from ts_clustering.clustering.timeseries_clustering import TimeSeriesClustering
 from ts_clustering.validation.validation_clustering import ValidationTimeSeriesClustering
@@ -13,7 +13,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 
 def main():
-    config = ClusteringConfig
 
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")

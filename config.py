@@ -24,7 +24,7 @@ class ClusteringConfig:
     k1: int = 2
     k2: int = 6
     # Down sampling factor of time series to manage memory usage for DTW
-    down_sample_factor: int = 100
+    down_sample_factor: int = 2
     # Random seed for reproducibility
     random_seed: int = 42
     # Output files
@@ -33,3 +33,6 @@ class ClusteringConfig:
     rank_matrix_output_file: str = 'rank_matrix.csv'
     dist_to_ref_output_file: str = 'dist_to_ref.csv'
     cluster_centers_output_file: str = 'cluster_centers.csv'
+
+
+default_config = ClusteringConfig()
