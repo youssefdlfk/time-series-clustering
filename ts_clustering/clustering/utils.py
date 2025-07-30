@@ -1,9 +1,10 @@
 import numpy as np
-from tslearn.metrics import cdist_normalized_cc, y_shifted_sbd_vec, cdist_dtw, dtw
-from tslearn.metrics.cycc import normalized_cc
-from sklearn.metrics import pairwise_distances
-from scipy.spatial.distance import pdist, squareform
 from dtaidistance.dtw import distance_matrix_fast
+from scipy.spatial.distance import pdist, squareform
+from sklearn.metrics import pairwise_distances
+from tslearn.metrics import (cdist_dtw, cdist_normalized_cc, dtw,
+                             y_shifted_sbd_vec)
+from tslearn.metrics.cycc import normalized_cc
 
 
 def compute_distance_matrix(X: np.ndarray, metric: str, **kwargs) -> np.ndarray:

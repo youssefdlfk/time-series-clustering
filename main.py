@@ -4,9 +4,11 @@ import pickle
 import numpy as np
 
 from config import default_config as config
-from ts_clustering.data_processing_insight  import data_proc_insight, save_outputs_to_csv
 from ts_clustering.clustering.timeseries_clustering import TimeSeriesClustering
-from ts_clustering.validation.validation_clustering import ValidationTimeSeriesClustering
+from ts_clustering.data_processing_insight import (data_proc_insight,
+                                                   save_outputs_to_csv)
+from ts_clustering.validation.validation_clustering import \
+    ValidationTimeSeriesClustering
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

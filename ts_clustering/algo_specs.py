@@ -1,7 +1,7 @@
-from dataclasses import field
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Type, Dict, Any
-from dataclasses import dataclass
+from typing import Any, Dict, Type
+
 from config import ClusteringConfig
 
 

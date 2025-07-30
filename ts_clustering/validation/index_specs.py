@@ -1,7 +1,12 @@
 from abc import ABC, abstractmethod
+
 import numpy as np
-from ts_clustering.validation.index_impl import (silhouette_index, dunn_index, davies_bouldin_index, stability_index,
-                                                 calinski_harabasz_index, hartigan_index)
+
+from ts_clustering.validation.index_impl import (calinski_harabasz_index,
+                                                 davies_bouldin_index,
+                                                 dunn_index, hartigan_index,
+                                                 silhouette_index,
+                                                 stability_index)
 
 
 class ValidityIndex(ABC):

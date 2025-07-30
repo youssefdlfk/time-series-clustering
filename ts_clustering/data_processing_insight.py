@@ -1,9 +1,11 @@
+import copy
+import logging
+import pickle
+
 import numpy as np
 import pandas as pd
 import torch
-import copy
-import pickle
-import logging
+
 from ts_clustering.clustering.utils import spearman_footrule_distance
 
 

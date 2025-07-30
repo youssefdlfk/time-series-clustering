@@ -1,16 +1,22 @@
-import logging
-import random
-import copy
-import numpy as np
-import pickle
 import collections
+import copy
+import logging
+import pickle
+import random
 from typing import List
+
+import numpy as np
+
 from config import ClusteringConfig
 from ts_clustering.clustering.timeseries_clustering import TimeSeriesClustering
-from ts_clustering.clustering.utils import spearman_footrule_distance, compute_distance_matrix
-from ts_clustering.validation.index_specs import (ValidityIndex, SilhouetteIndex,
-                                                  DunnIndex, DaviesBouldinIndex, CalinskiHarabaszIndex, APNIndex,
-                                                  ADIndex, HartiganIndex)
+from ts_clustering.clustering.utils import (compute_distance_matrix,
+                                            spearman_footrule_distance)
+from ts_clustering.validation.index_specs import (ADIndex, APNIndex,
+                                                  CalinskiHarabaszIndex,
+                                                  DaviesBouldinIndex,
+                                                  DunnIndex, HartiganIndex,
+                                                  SilhouetteIndex,
+                                                  ValidityIndex)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

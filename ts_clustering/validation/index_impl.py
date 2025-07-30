@@ -1,9 +1,10 @@
 import numpy as np
 from sklearn.metrics import euclidean_distances, pairwise_distances
-from tslearn.metrics import cdist_dtw, dtw
 from tslearn.barycenters import dtw_barycenter_averaging
+from tslearn.metrics import cdist_dtw, dtw
 
-from ts_clustering.clustering.utils import (compute_WCSS, cross_correlation_average,
+from ts_clustering.clustering.utils import (compute_WCSS,
+                                            cross_correlation_average,
                                             distance_cross_correlation,
                                             pairwise_cross_correlation)
 
