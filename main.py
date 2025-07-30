@@ -1,3 +1,10 @@
+"""
+Main entry point for the Time Series Clustering project.
+
+This script orchestrates the workflow including data preprocessing, algorithm validation, clustering execution,
+and saving of results.
+"""
+
 import logging
 import pickle
 

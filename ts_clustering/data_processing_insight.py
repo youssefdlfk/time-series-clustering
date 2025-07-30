@@ -1,3 +1,11 @@
+"""
+Data preprocessing module for time series clustering.
+
+Specifically tailored to process closeness-to-solution trajectories from psychological insight experiments.
+Handles loading, reshaping, downsampling, and labeling data for subsequent clustering analysis.
+"""
+
+
 import copy
 import logging
 import pickle

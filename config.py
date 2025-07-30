@@ -1,3 +1,11 @@
+"""
+Configuration module for the Time Series clustering project.
+
+Stores all configurable hyperparameters, file paths, and constants utilized across modules. Adjust these parameters
+depending on the desired clustering and available data.
+"""
+
+
 from dataclasses import dataclass
 
 

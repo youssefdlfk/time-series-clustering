@@ -1,3 +1,11 @@
+"""
+Module for validating clustering algorithms applied to time series data.
+
+Extends TimeSeriesClustering to include functionality for evaluating clusters using multiple validity indices,
+ranking algorithm-cluster number combinations, and selecting optimal clustering configurations based on
+comprehensive metric evaluations.
+"""
+
 import collections
 import copy
 import logging

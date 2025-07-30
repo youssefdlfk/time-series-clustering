@@ -1,3 +1,12 @@
+"""
+Core module for executing clustering on time series data.
+
+Defines the TimeSeriesClustering class responsible for:
+- Initializing and configuring clustering algorithms (KMeans with Euclidean or DTW metrics, KShape).
+- Running clustering operations given a specified algorithm and number of clusters.
+- Visualizing clustering outcomes, including cluster centroids and insight-related statistics.
+"""
+
 import logging
 from typing import Dict
 

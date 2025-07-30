@@ -1,3 +1,10 @@
+"""
+Specification of validity indices used for clustering evaluation.
+
+Defines abstract and concrete classes encapsulating various internal validity metrics.
+"""
+
+
 from abc import ABC, abstractmethod
 
 import numpy as np

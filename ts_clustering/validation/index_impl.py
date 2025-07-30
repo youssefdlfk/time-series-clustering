@@ -1,3 +1,11 @@
+"""
+Implementation of various cluster validity indices used for evaluating clustering quality.
+
+Includes the following metrics: Silhouette, Dunn, Davies-Bouldin, Stability indices (AD, APN), Calinski-Harabasz,
+and Hartigan. These indices support assessment of clustering algorithms applied to time series data.
+"""
+
+
 import numpy as np
 from sklearn.metrics import euclidean_distances, pairwise_distances
 from tslearn.barycenters import dtw_barycenter_averaging

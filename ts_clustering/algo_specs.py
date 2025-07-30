@@ -1,3 +1,10 @@
+"""
+Specification of clustering algorithms and associated metrics used in the project.
+
+Defines structured representations (AlgorithmSpec) for clustering algorithms, enabling flexible selection
+and configuration of clustering methods (e.g., KMeans Euclidean, KMeans DTW, KShape).
+"""
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Type

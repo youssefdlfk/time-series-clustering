@@ -1,3 +1,11 @@
+"""
+Utility functions for distance calculations between time series data.
+
+Provides implementations of metrics such as Euclidean distance, Dynamic Time Warping (DTW),
+and cross-correlation for clustering and validation purposes.
+"""
+
+
 import numpy as np
 from dtaidistance.dtw import distance_matrix_fast
 from scipy.spatial.distance import pdist, squareform
