@@ -14,8 +14,8 @@ import numpy as np
 import pandas as pd
 import torch
 
+from config import default_config as config
 from ts_clustering.clustering.utils import spearman_footrule_distance
-
 
 def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor: int, filter: str) -> tuple[np.ndarray, pd.DataFrame]:
     """
@@ -86,17 +86,18 @@ def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor:
     return X_data, df_insight
 
 
-def save_outputs_to_csv(df_insight, config, clusterer, validator):
+def save_outputs_to_csv(topk, df_insight, config, clusterer, validator):
     # Load data
-    optim_labels = np.load('optim_labels.npy')
-    score_matrix = np.load('score_matrix.npy')
-    rank_matrix = np.load('rank_matrix.npy')
-    with open('optim_model.pkl', 'rb') as f:
+    optim_labels = np.load(f'saved_outputs/optim_labels_{topk}.npy')
+    score_matrix = np.load('saved_outputs/score_matrix.npy')
+    rank_matrix = np.load('saved_outputs/rank_matrix.npy')
+    with open(f'saved_outputs/optim_model_{topk}.pkl', 'rb') as f:
         optim_model = pickle.load(f)
 
     # Some columns and rows
-    indices_cols = list(validator.val_idx_dict.keys())
-    algo_clus_rows = [algo + '_' + str(n_cluster) + 'clusters' for algo in clusterer.algos_dict.keys() for n_cluster in range(config.k1, config.k2+1)]
+    indices_cols = [validator.validation_indices[i].name for i in range(len(validator.validation_indices))]
+    algo_rows = [algo.name for algo in clusterer.algorithms.values()]
+    algo_clus_rows = [algo + '_' + str(n_cluster) + 'clusters' for algo in algo_rows for n_cluster in range(config.k1, config.k2+1)]
     clus_cent_col =['cluster' + str(nb) for nb in range(optim_model.n_clusters)]
     algo_clus_col = 'algorithm_cluster'
 
@@ -119,11 +120,11 @@ def save_outputs_to_csv(df_insight, config, clusterer, validator):
     dist_to_ref_df.insert(loc=0, column=algo_clus_col, value=algo_clus_rows)
 
     # Saving to .csv files
-    labels_df.to_csv(config.labels_output_file, index=False)
-    score_df.to_csv(config.score_matrix_output_file, index=False)
-    rank_df.to_csv(config.rank_matrix_output_file, index=False)
-    dist_to_ref_df.to_csv(config.dist_to_ref_output_file, index=False)
-    cluster_center_df.to_csv(config.cluster_centers_output_file, index=False)
+    labels_df.to_csv('saved_outputs/'+config.labels_output_file+f'_{topk}.csv', index=False)
+    score_df.to_csv('saved_outputs/'+config.score_matrix_output_file+'.csv', index=False)
+    rank_df.to_csv('saved_outputs/'+config.rank_matrix_output_file+'.csv', index=False)
+    dist_to_ref_df.to_csv('saved_outputs/'+config.dist_to_ref_output_file+'.csv', index=False)
+    cluster_center_df.to_csv('saved_outputs/'+config.cluster_centers_output_file+'.csv', index=False)
 
 
 

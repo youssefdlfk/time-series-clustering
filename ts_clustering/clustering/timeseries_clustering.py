@@ -8,7 +8,7 @@ Defines the TimeSeriesClustering class responsible for:
 """
 
 import logging
-from typing import Dict
+from typing import Dict, Type
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,29 +35,29 @@ class TimeSeriesClustering:
             for spec in [
                 AlgorithmSpec("K‑Means Euclid", Metric.EUCLIDEAN, TimeSeriesKMeans, config, {}),
                 AlgorithmSpec("K‑Means DTW", Metric.DTW, TimeSeriesKMeans, config, dtw_params),
-                AlgorithmSpec("K‑Shape", Metric.CC, KShape, config, {}),
+                #AlgorithmSpec("K‑Shape", Metric.CC, KShape, config, {}),
             ]
         }
 
-    def run_timeseries_clustering(self, algo_str: str, n_clusters: int) -> tuple[TimeSeriesKMeans, np.ndarray]:
+    def run_timeseries_clustering(self, algo: AlgorithmSpec, n_clusters: int) -> tuple[Type, np.ndarray]:
         """
         Run clustering with a specified algorithm and number of clusters.
         :param n_clusters: Number of clusters
-        :param algo_str: Key string in the algorithm dictionary referring to a specific clustering algorithm
+        :param algo: AlgorithmSpec object referring to a specific clustering algorithm
         :return: Clustering model and labels
         """
         logging.info("Running clustering...")
-        model = self.algorithms[algo_str].build(n_clusters=n_clusters)
+        model = self.algorithms[algo.metric.value].build(n_clusters=n_clusters)
         labels = model.fit_predict(self.X)
         return model, labels
 
-    def plot_timeseries_clustering(self, model, labels: np.ndarray, algo_str: str,
-                                   n_clusters: int, df_insight: pd.DataFrame) -> None:
+    def plot_timeseries_clustering(self, model, labels: np.ndarray, algo: AlgorithmSpec,
+                                   n_clusters: int, df_insight: pd.DataFrame, k_model: int) -> None:
         """
         Apply clustering and plot the timeseries, their centroids and the insight trial %
         :param model: Clustering model
         :param labels: Clustering labels
-        :param algo_str: Key string in the algorithm dictionary referring to a specific clustering algorithm
+        :param algo: Key string in the algorithm dictionary referring to a specific clustering algorithm
         :param n_clusters: Number of clusters
         :param df_insight: Dataframe indicating insight or not insight for each time series
         """
@@ -81,5 +81,5 @@ class TimeSeriesClustering:
             plt.plot(centroid, "r-")
             plt.title(f'Cluster {cluster+1} \n #trials: {len(indices)} \n Insight trials (% of cluster): '
                       f'{(nb_insights/len(indices))*100:.1f}% \n Insight trials (% of total): {(nb_insights/nb_insights_total)*100:.1f}%')
-        plt.savefig(f'{algo_str}_{n_clusters}clusters.png')
-        plt.show()
+        plt.savefig(f'saved_outputs/top{k_model}_{algo.name}_{n_clusters}clusters.png')
+        #plt.show()

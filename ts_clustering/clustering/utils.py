@@ -7,9 +7,7 @@ and cross-correlation for clustering and validation purposes.
 
 
 import numpy as np
-from dtaidistance.dtw import distance_matrix_fast
 from scipy.spatial.distance import pdist, squareform
-from sklearn.metrics import pairwise_distances
 from tslearn.metrics import (cdist_dtw, cdist_normalized_cc, dtw,
                              y_shifted_sbd_vec)
 from tslearn.metrics.cycc import normalized_cc
@@ -40,7 +38,7 @@ def compute_distance_matrix(X: np.ndarray, metric: str, **kwargs) -> np.ndarray:
     return distance_matrix
 
 
-def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, metric, **kwargs):
+def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, **kwargs):
     """
     Compute the Within-Cluster Sum Squared distance
     :param n_clusters: Number of clusters
@@ -54,13 +52,13 @@ def compute_WCSS(n_clusters: int, cluster_k: list[np.ndarray], centroids, metric
     for i in range(n_clusters):
         variance = 0.0
         for datapoint in cluster_k[i]:
-            if metric == 'euclidean':
+            if kwargs['metric'] == 'euclidean':
                 variance += np.sum((datapoint - centroids[i])**2)
-            elif metric == 'dtw':
+            elif kwargs['metric'] == 'dtw':
                 variance += dtw(datapoint, centroids[i], global_constraint=kwargs['metric_params']['global_constraint'],
                                 sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
                                 itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])**2
-            elif metric == 'cross-correlation':
+            elif kwargs['metric'] == 'cross-correlation':
                 variance += distance_cross_correlation(datapoint, centroids[i])**2
         WCSS += variance
     return WCSS

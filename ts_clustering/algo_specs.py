@@ -27,12 +27,20 @@ class AlgorithmSpec:
     metric_params: Dict[str, Any] = field(default_factory=dict)
 
     def build(self, n_clusters: int):
-        return self.model(
-            n_clusters=n_clusters,
-            metric=self.metric.value,
-            metric_params=self.metric_params,
-            random_state=self.config.random_seed,
-            max_iter=self.config.max_iter,
-            tol=self.config.tol,
-            n_jobs=-1,
-        )
+        if self.metric.value == 'cross-correlation':
+            return self.model(
+                n_clusters=n_clusters,
+                random_state=self.config.random_seed,
+                max_iter=self.config.max_iter,
+                tol=self.config.tol,
+            )
+        else:
+            return self.model(
+                n_clusters=n_clusters,
+                metric=self.metric.value,
+                metric_params=self.metric_params,
+                random_state=self.config.random_seed,
+                max_iter=self.config.max_iter,
+                tol=self.config.tol,
+                n_jobs=-1,
+            )

@@ -90,7 +90,7 @@ def dunn_index(labels: np.ndarray, distance_matrix: np.ndarray) -> float:
     return dunn_index
 
 
-def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
+def davies_bouldin_index(X: np.ndarray, labels: np.ndarray, **kwargs) -> float:
     """
     Compute the Davies-Bouldin index for a time series clustering. The lower the better.
     :param model: Clustering model
@@ -101,41 +101,41 @@ def davies_bouldin_index(X: np.ndarray, model, labels: np.ndarray, metric: str, 
     :return: Davies-Bouldin index
     """
     # n_clusters is the number of clusters
-    n_clusters = model.n_clusters
+    n_clusters = kwargs['model'].n_clusters
     # cluster_k is a list of indices of data points in cluster k
     clusters = [X[labels == k] for k in range(n_clusters)]
     # get centroids as 2D (1, T) for pairwise routines
-    centroids = [np.expand_dims(model.cluster_centers_[k].squeeze(-1), axis=0) for k in range(n_clusters)]
+    centroids = [np.expand_dims(kwargs['model'].cluster_centers_[k].squeeze(-1), axis=0) for k in range(n_clusters)]
     # stack centroids as (k, T) for pairwise centroid–centroid distances
     stacked_centroids = np.vstack([c for c in centroids])  # shape: (k, T)
 
     # --- Δ(X_i): intracluster scatter for each cluster i ---
     Delta = np.zeros(n_clusters)
     for i in range(n_clusters):
-        if metric == 'euclidean':
+        if kwargs['metric'] == 'euclidean':
             # mean distance of points to centroid i
             Delta[i] = np.mean(pairwise_distances(clusters[i], centroids[i]))
-        elif metric == 'dtw':
+        elif kwargs['metric'] == 'dtw':
             Delta[i] = np.mean(
                 cdist_dtw(clusters[i], centroids[i],
                           global_constraint=kwargs['metric_params']['global_constraint'],
                           sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
                           itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])
             )
-        elif metric == 'cross-correlation':
+        elif kwargs['metric'] == 'cross-correlation':
             Delta[i] = np.mean(pairwise_cross_correlation(clusters[i], centroids[i], self_similarity=False))
         else:
             raise ValueError('Unsupported metric.')
 
     # --- δ(X_i, X_j): centroid–centroid distances for all pairs (i, j) ---
-    if metric == 'euclidean':
+    if kwargs['metric'] == 'euclidean':
         delta = euclidean_distances(stacked_centroids, stacked_centroids)  # shape (k, k)
-    elif metric == 'dtw':
+    elif kwargs['metric'] == 'dtw':
         delta = cdist_dtw(stacked_centroids, stacked_centroids,
                           global_constraint=kwargs['metric_params']['global_constraint'],
                           sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
                           itakura_max_slope=kwargs['metric_params']['itakura_max_slope'])
-    elif metric == 'cross-correlation':
+    elif kwargs['metric'] == 'cross-correlation':
         delta = pairwise_cross_correlation(stacked_centroids, stacked_centroids, self_similarity=True)
     else:
         raise ValueError('Unsupported metric.')
@@ -200,7 +200,7 @@ def stability_index(X: np.ndarray, labels: np.ndarray, labels_cut: np.ndarray, d
         raise ValueError('Unsupported method.')
 
 
-def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: str, **kwargs) -> float:
+def calinski_harabasz_index(X: np.ndarray, labels: np.ndarray, **kwargs) -> float:
     """
     Compute the Calinski-Harabasz index for time series clustering, i.e. a ratio of between-cluster dispersion (B)
     and within-cluster dispersion (W). The higher the value, the better the clustering.
@@ -212,7 +212,7 @@ def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: st
     :return: Calinski-Harabasz index
     """
     # n_clusters is the number of clusters
-    n_clusters = model.n_clusters
+    n_clusters = kwargs['model'].n_clusters
     # cluster_k is a list of indices of data points in cluster k
     cluster_k = [X[labels == k] for k in range(n_clusters)]
     # factor
@@ -220,15 +220,15 @@ def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: st
     # between cluster dispersion
     B = 0
     # centroids is an array of the cluster centroids
-    centroids = [model.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters)]
-    if metric == 'euclidean':
+    centroids = [kwargs['model'].cluster_centers_.squeeze(-1)[k] for k in range(n_clusters)]
+    if kwargs['metric'] == 'euclidean':
         # compute mean of centroids
         mu = np.mean(np.vstack(centroids), axis=0)
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
             mu_i = centroids[i]
             B += n_i * np.sum((mu_i - mu) ** 2)
-    elif metric == 'dtw':
+    elif kwargs['metric'] == 'dtw':
         mu = dtw_barycenter_averaging(np.vstack(centroids)).squeeze(-1)
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
@@ -236,7 +236,7 @@ def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: st
             B += n_i * (dtw(mu_i, mu, global_constraint=kwargs['metric_params']['global_constraint'],
                             sakoe_chiba_radius=kwargs['metric_params']['sakoe_chiba_radius'],
                             itakura_max_slope=kwargs['metric_params']['itakura_max_slope']) ** 2)
-    elif metric == 'cross-correlation':
+    elif kwargs['metric'] == 'cross-correlation':
         mu = cross_correlation_average(np.expand_dims(np.vstack(centroids), axis=-1)).squeeze(-1)
         for i in range(n_clusters):
             n_i = cluster_k[i].shape[0]
@@ -244,12 +244,11 @@ def calinski_harabasz_index(X: np.ndarray, model, labels: np.ndarray, metric: st
             B += n_i * (distance_cross_correlation(mu_i, mu) ** 2)
 
     # within-cluster dispersion
-    W = compute_WCSS(n_clusters=n_clusters, cluster_k=cluster_k, centroids=centroids, metric=metric, **kwargs)
+    W = compute_WCSS(n_clusters=n_clusters, cluster_k=cluster_k, centroids=centroids, **kwargs)
     return (B/W)*scaling_factor
 
 
-def hartigan_index(X: np.ndarray, model_k, labels_k: np.ndarray, model_k1,
-                   labels_k1: np.ndarray, metric: str, **kwargs) -> float:
+def hartigan_index(X: np.ndarray, labels_k: np.ndarray, **kwargs) -> float:
     """
     Compute the Hartigan validity index for time series clustering, i.e. the ratio of within-cluster sum of squares for
     cluster k and for cluster k + 1
@@ -268,18 +267,18 @@ def hartigan_index(X: np.ndarray, model_k, labels_k: np.ndarray, model_k1,
     compatible with time-series data"
     """
     # Compute WCSS1 for model with k clusters
-    n_clusters1 = model_k.n_clusters
+    n_clusters1 = kwargs['model'].n_clusters
     # cluster_k is a list of indices of data points in cluster k
     cluster_k1 = [X[labels_k == k] for k in range(n_clusters1)]
-    centroids1 = [model_k.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters1)]
-    WCSS1 = compute_WCSS(n_clusters=n_clusters1, cluster_k=cluster_k1, centroids=centroids1, metric=metric, **kwargs)
+    centroids1 = [kwargs['model'].cluster_centers_.squeeze(-1)[k] for k in range(n_clusters1)]
+    WCSS1 = compute_WCSS(n_clusters=n_clusters1, cluster_k=cluster_k1, centroids=centroids1, **kwargs)
 
     # Compute WCSS2 for model with k+1 clusters
-    n_clusters2 = model_k1.n_clusters
+    n_clusters2 = kwargs['model_k1'].n_clusters
     # cluster_k2 is a list of indices of data points in cluster k+1
-    cluster_k2 = [X[labels_k1 == k] for k in range(n_clusters2)]
-    centroids2 = [model_k1.cluster_centers_.squeeze(-1)[k] for k in range(n_clusters2)]
-    WCSS2 = compute_WCSS(n_clusters=n_clusters2, cluster_k=cluster_k2, centroids=centroids2, metric=metric, **kwargs)
+    cluster_k2 = [X[kwargs['labels_k1'] == k] for k in range(n_clusters2)]
+    centroids2 = [kwargs['model_k1'].cluster_centers_.squeeze(-1)[k] for k in range(n_clusters2)]
+    WCSS2 = compute_WCSS(n_clusters=n_clusters2, cluster_k=cluster_k2, centroids=centroids2, **kwargs)
     # Multiplying factor
     factor = X.shape[0] - n_clusters1 - 1
     return (WCSS1/WCSS2 - 1)*factor

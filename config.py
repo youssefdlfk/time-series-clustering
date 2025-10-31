@@ -12,12 +12,12 @@ from dataclasses import dataclass
 @dataclass
 class ClusteringConfig:
     """Configuration parameters for time series clustering"""
-    # Length of time series
-    ts_length: int = 2100
-    # Name of the csv data file
-    csv_name: str = "timeseriesfulldata.csv"
+    # Length of time series (up sampling)
+    ts_length: int = 2050
+    # Name of the csv raw data file
+    csv_name: str = "dataRaw_AnswerUpdated_processed.csv"
     # Maximum number of iterations for training of clustering models
-    max_iter: int = 30
+    max_iter: int = 10
     # Convergence threshold (tolerance)
     tol: float = 1e-5
     # Constraint type (sakoe-chiba, itakura, none)
@@ -30,17 +30,19 @@ class ClusteringConfig:
     perc_col_del: float = 0.1
     # Range of the number of clusters to explore for validation
     k1: int = 2
-    k2: int = 6
+    k2: int = 3
+    # Number of best algo to save and plot
+    topk: int = 3
     # Down sampling factor of time series to manage memory usage for DTW
-    down_sample_factor: int = 2
+    down_sample_factor: int = 700
     # Random seed for reproducibility
     random_seed: int = 42
     # Output files
-    labels_output_file: str = 'cluster_labels.csv'
-    score_matrix_output_file: str = 'score_matrix.csv'
-    rank_matrix_output_file: str = 'rank_matrix.csv'
-    dist_to_ref_output_file: str = 'dist_to_ref.csv'
-    cluster_centers_output_file: str = 'cluster_centers.csv'
+    labels_output_file: str = 'cluster_labels'
+    score_matrix_output_file: str = 'score_matrix'
+    rank_matrix_output_file: str = 'rank_matrix'
+    dist_to_ref_output_file: str = 'dist_to_ref'
+    cluster_centers_output_file: str = 'cluster_centers'
 
 
 default_config = ClusteringConfig()

@@ -16,6 +16,7 @@ from typing import List
 import numpy as np
 
 from config import ClusteringConfig
+from ts_clustering.algo_specs import AlgorithmSpec
 from ts_clustering.clustering.timeseries_clustering import TimeSeriesClustering
 from ts_clustering.clustering.utils import (compute_distance_matrix,
                                             spearman_footrule_distance)
@@ -44,9 +45,9 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             DunnIndex(),
             DaviesBouldinIndex(),
             CalinskiHarabaszIndex(),
-            APNIndex(perc_col_del=self.config.perc_col_del),
-            ADIndex(perc_col_del=self.config.perc_col_del),
-            HartiganIndex(),
+            # APNIndex(perc_col_del=self.config.perc_col_del),
+            # ADIndex(perc_col_del=self.config.perc_col_del),
+            # HartiganIndex(),
         ]
     def compute_score_matrix(self) -> np.ndarray:
         """
@@ -75,7 +76,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             distance_matrix = compute_distance_matrix(X=self.X, metric=metric, metric_params=metric_params)
             # save matrix
             logging.info(f"Saving distance matrix for {metric}...")
-            np.save('dist_mat_'+metric, distance_matrix)
+            np.save('saved_outputs/dist_mat_'+metric, distance_matrix)
 
             # 2) Fit models
             # model and labels dictionary
@@ -103,8 +104,8 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         labels_k = model_k.fit_predict(self.X)
         mod_lab_dict[k] = (model_k, labels_k)
         models_labels_dict[metric_str][k] = (model_k, labels_k)
-        # Perturbed labels only for k ≤ k2 when stability indices are used
-        if k <= self.k2:
+        # Perturbed labels only for k ≤ k2 and if stability indices are used
+        if k <= self.k2 and any(isinstance(val_idx, APNIndex) or isinstance(val_idx, ADIndex) for val_idx in self.validation_indices):
             logging.info(f"[{metric_str}]     • computing perturbed labels for stability...")
             labels_k_cut = self._get_perturbed_labels(
                 X=self.X,
@@ -114,7 +115,7 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             lab_cut_dict[k] = labels_k_cut
         # Saving progress
         logging.info("Saving models and labels progress...")
-        with open(f'models_labels_dict.pkl', 'wb') as file:
+        with open(f'saved_outputs/models_labels_dict.pkl', 'wb') as file:
             pickle.dump(models_labels_dict, file)
         logging.info("Dictionary saved!")
 
@@ -165,8 +166,8 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
     @staticmethod
     def _save_results(score_matrix, models_labels_dict):
         logging.info("Saving intermediate models & score matrix...")
-        np.save('score_matrix.npy', score_matrix)
-        with open('models_labels_dict.pkl', 'wb') as file:
+        np.save('saved_outputs/score_matrix.npy', score_matrix)
+        with open('saved_outputs/models_labels_dict.pkl', 'wb') as file:
             pickle.dump(models_labels_dict, file)
         logging.info("Score matrix and dictionary saved!")
 
@@ -196,20 +197,20 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         rank_matrix = np.argsort(indices, axis=0)
         return rank_matrix
 
-    def get_best_algo(self) -> tuple[str, int]:
+    def get_topk_algo(self, topk: int) -> List[tuple[AlgorithmSpec, int]]:
         """
-        Choose the best algorithm-#clusters combination as the closest to a reference ranking using the Spearman
+        Choose the top k algorithm-#clusters combination as the closest to a reference ranking using the Spearman
         footrule distance
         :return: A string of the winning algorithm-#clusters combination
         """
         # Compute the score matrix
         score_matrix = self.compute_score_matrix()
         # Save score matrix
-        np.save('score_matrix.npy', score_matrix)
+        np.save('saved_outputs/score_matrix.npy', score_matrix)
         # Compute the rank matrix
         rank_matrix = self._rank_algo(score_matrix)
         # Save rank matrix
-        np.save('rank_matrix.npy', rank_matrix)
+        np.save('saved_outputs/rank_matrix.npy', rank_matrix)
         # Each rank vector of algo-clus combination is compared to an ideal reference ranking filled with zeros
         ranking_ref = np.zeros(len(self.validation_indices))
         dist_to_ref = []
@@ -217,14 +218,18 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         for algo_clus_idx in range(score_matrix.shape[0]):
             dist_to_ref.append(spearman_footrule_distance(ranking_ref, rank_matrix[algo_clus_idx, :]))
         # The best algo-clus combination is the one closest to the reference ranking vector
-        best_algo_idx = dist_to_ref.index(min(dist_to_ref))
+        topk_algo_idx = sorted(range(len(dist_to_ref)), key=lambda i: dist_to_ref[i])[:topk]
+        # best_algo_idx = dist_to_ref.index(min(dist_to_ref))
         # Get the corresponding algorithm name and number of clusters
-        algos_clus_dict = {}
-        n_k = self.k2 - self.k1 + 1
-        for algo_idx, algo_str in enumerate(self.algorithms.values()):
-            for k in range(self.k1, self.k2+1):
-                algos_clus_dict[(k-self.k1)+algo_idx*n_k] = (algo_str, k)
-        return algos_clus_dict[best_algo_idx]
+        topk_algo_clus = []
+        for idx in topk_algo_idx:
+            algos_clus_dict = {}
+            n_k = self.k2 - self.k1 + 1
+            for algo_idx, algo_spec in enumerate(self.algorithms.values()):
+                for k in range(self.k1, self.k2+1):
+                    algos_clus_dict[(k-self.k1)+algo_idx*n_k] = (algo_spec, k)
+            topk_algo_clus.append(algos_clus_dict[idx])
+        return topk_algo_clus
 
     @staticmethod
     def save_output_to_file(filename: str, optim_algo: str, optim_n_clusters: int):

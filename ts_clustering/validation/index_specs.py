@@ -46,7 +46,7 @@ class DaviesBouldinIndex(ValidityIndex):
     lower_better = True
 
     def compute(self, *, X, labels, **kwargs) -> float:
-        return davies_bouldin_index(X=X, labels=labels, model=kwargs['model'], metric=kwargs['metric'], **kwargs)
+        return davies_bouldin_index(X=X, labels=labels, **kwargs)
 
 
 class ADIndex(ValidityIndex):
@@ -58,7 +58,7 @@ class ADIndex(ValidityIndex):
 
     def compute(self, *, X, labels, distance_matrix=None, **kwargs) -> float:
         return stability_index(X=X, labels=labels, distance_matrix=distance_matrix, labels_cut=kwargs['labels_cut'],
-                               method=kwargs['stability_params']['method'])
+                               method=self.name)
 
 
 class APNIndex(ValidityIndex):
@@ -70,7 +70,7 @@ class APNIndex(ValidityIndex):
 
     def compute(self, *, X, labels, distance_matrix=None, **kwargs) -> float:
         return stability_index(X=X, labels=labels, distance_matrix=distance_matrix, labels_cut=kwargs['labels_cut'],
-                               method=kwargs['stability_params']['method'])
+                               method=self.name)
 
 
 class CalinskiHarabaszIndex(ValidityIndex):
@@ -78,12 +78,11 @@ class CalinskiHarabaszIndex(ValidityIndex):
     lower_better = False
 
     def compute(self, *, X, labels, distance_matrix=None, **kwargs) -> float:
-        return calinski_harabasz_index(X=X, model=kwargs['model'], metric=kwargs['metric'], **kwargs)
+        return calinski_harabasz_index(X=X, labels=labels, **kwargs)
 
 class HartiganIndex(ValidityIndex):
     name = 'hartigan'
     lower_better = True
 
     def compute(self, *, X, labels, distance_matrix=None, **kwargs) -> float:
-        return hartigan_index(X=X, model_k=kwargs['model_k'], labels_k=kwargs['labels_k'], model_k1=kwargs['model_k1'],
-                              labels_k1=kwargs['labels_k1'], metric=kwargs['metric'])
+        return hartigan_index(X=X, labels_k=labels, **kwargs)
