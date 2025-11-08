@@ -15,7 +15,7 @@ class ClusteringConfig:
     # Length of time series (up sampling)
     ts_length: int = 2050
     # Name of the csv raw data file
-    csv_name: str = "dataRaw_AnswerUpdated_processed.csv"
+    csv_name: str = "dataRaw_AnswerUpdated_processed_INSIGHT.csv"
     # Maximum number of iterations for training of clustering models
     max_iter: int = 10
     # Convergence threshold (tolerance)
@@ -30,11 +30,11 @@ class ClusteringConfig:
     perc_col_del: float = 0.1
     # Range of the number of clusters to explore for validation
     k1: int = 2
-    k2: int = 3
+    k2: int = 6
     # Number of best algo to save and plot
     topk: int = 3
     # Down sampling factor of time series to manage memory usage for DTW
-    down_sample_factor: int = 700
+    down_sample_factor: int = 1
     # Random seed for reproducibility
     random_seed: int = 42
     # Output files
