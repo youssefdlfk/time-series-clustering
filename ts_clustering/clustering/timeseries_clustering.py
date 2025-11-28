@@ -35,7 +35,7 @@ class TimeSeriesClustering:
             for spec in [
                 AlgorithmSpec("K‑Means Euclid", Metric.EUCLIDEAN, TimeSeriesKMeans, config, {}),
                 AlgorithmSpec("K‑Means DTW", Metric.DTW, TimeSeriesKMeans, config, dtw_params),
-                #AlgorithmSpec("K‑Shape", Metric.CC, KShape, config, {}),
+                AlgorithmSpec("K‑Shape", Metric.CC, KShape, config, {}),
             ]
         }
 

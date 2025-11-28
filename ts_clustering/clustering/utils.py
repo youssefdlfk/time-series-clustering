@@ -89,7 +89,9 @@ def distance_cross_correlation(X1: np.ndarray, X2: np.ndarray):
     :param X2: Second time series
     :return: Cross correlation measure
     """
-    return normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1)).max()
+    sim = normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1)).max()
+    dist = 1 - sim
+    return dist
 
 
 def pairwise_cross_correlation(X1: np.ndarray, X2: np.ndarray, self_similarity):
@@ -105,8 +107,10 @@ def pairwise_cross_correlation(X1: np.ndarray, X2: np.ndarray, self_similarity):
     # Xn = Xc / norms
     # sim = Xn @ Xn.T  # very fast
     # dist = 1 - sim
-    return cdist_normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1), np.ones(X1.shape[0])*-1,
+    sim = cdist_normalized_cc(np.expand_dims(X1, axis=-1), np.expand_dims(X2, axis=-1), np.ones(X1.shape[0])*-1,
                                np.ones(X2.shape[0])*-1, self_similarity)
+    dist = 1 - sim
+    return dist
 
 
 def cross_correlation_average(dataset, max_iters=10, tol=1e-4):
@@ -162,11 +166,7 @@ def spearman_footrule_distance(X: np.ndarray, Y: np.ndarray) -> float:
     :return: Spearman footrule distance
     """
     d = len(X)
-    if d % 2 == 0:
-        max_d = (d-1)*d/2
-    elif d % 2 != 0:
-        max_d = (d**2)/2
-    dist_XY = 0
-    for i in range(d):
-        dist_XY += abs(X[i]-Y[i])
-    return dist_XY/max_d
+    dist = np.sum(np.abs(X - Y))
+    max_d = (d * d) // 2   # floor(d^2 / 2)
+
+    return dist / max_d

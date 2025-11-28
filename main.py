@@ -42,7 +42,6 @@ def main():
 
     # Save output of validation for top k models
     for i, (optim_algo, optim_n_clusters) in enumerate(topk_algo_clus_list):
-        validator.save_output_to_file('saved_outputs/output_validation.txt', optim_algo.name, optim_n_clusters)
          # Step 6: Run clustering with top k models
         logging.info(f"Running clustering for top {i+1} model...")
         # Run clustering with optimal algorithm and number of clusters

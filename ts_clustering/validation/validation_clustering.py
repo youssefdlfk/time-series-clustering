@@ -62,31 +62,29 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
         nb_algos = len(self.algorithms)
         nb_val_idx = len(self.validation_indices)
         n_k = self.k2 - self.k1 + 1
-        score_matrix = np.empty((nb_algos*n_k, nb_val_idx), dtype=float)
-        # Initialize dictionary of models and labels for all algos and #clusters
-        models_labels_dict = collections.defaultdict(dict)
+        score_matrix = np.full((nb_algos*n_k, nb_val_idx), np.nan, dtype=float)
         row_offset = 0
         # Loop over the clustering algorithms
         for algo_spec in self.algorithms.values():
             metric = algo_spec.metric.value
             metric_params = algo_spec.metric_params
 
-            logging.info(f"Computing distance matrix for {metric}...")
             # 1) Compute distance matrix
+            logging.info(f"Computing distance matrix for {metric}...")
             distance_matrix = compute_distance_matrix(X=self.X, metric=metric, metric_params=metric_params)
             # save matrix
             logging.info(f"Saving distance matrix for {metric}...")
             np.save('saved_outputs/dist_mat_'+metric, distance_matrix)
+            np.savetxt('saved_outputs/dist_mat_'+metric+'.csv', distance_matrix, delimiter=",")
 
             # 2) Fit models
             # model and labels dictionary
             mod_lab_dict = {}
             lab_cut_dict = {}
-            # Loop over the range of clusters (and one more for the Hartigan index)
-            for k in range(self.k1, self.k2 + 2):
+            # Loop over the range of clusters ('self.k2 + 2 ' if Hartigan index is included!)
+            for k in range(self.k1, self.k2 + 1):
                 logging.info(f"Fit and predict model for cluster {k}...")
-                mod_lab_dict, lab_cut_dict = self._fit_models(algo_spec, metric, mod_lab_dict, lab_cut_dict,
-                                                              models_labels_dict, k)
+                mod_lab_dict, lab_cut_dict = self._fit_models(algo_spec, metric, mod_lab_dict, lab_cut_dict, k)
 
             # 3) Compute validation indices
             # Loop over the range of clusters
@@ -95,15 +93,16 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                 score_matrix = self._compute_indices(metric, score_matrix, mod_lab_dict, lab_cut_dict, distance_matrix,
                                                      metric_params, k, row_offset)
             # Save score matrix
-            self._save_results(score_matrix, models_labels_dict)
+            np.save('saved_outputs/score_matrix.npy', score_matrix)
+            # Update row offset
+            row_offset += n_k
 
         return score_matrix
 
-    def _fit_models(self, algo_spec, metric_str, mod_lab_dict, lab_cut_dict, models_labels_dict, k):
+    def _fit_models(self, algo_spec, metric_str, mod_lab_dict, lab_cut_dict, k):
         model_k = algo_spec.build(n_clusters=k)
         labels_k = model_k.fit_predict(self.X)
         mod_lab_dict[k] = (model_k, labels_k)
-        models_labels_dict[metric_str][k] = (model_k, labels_k)
         # Perturbed labels only for k ≤ k2 and if stability indices are used
         if k <= self.k2 and any(isinstance(val_idx, APNIndex) or isinstance(val_idx, ADIndex) for val_idx in self.validation_indices):
             logging.info(f"[{metric_str}]     • computing perturbed labels for stability...")
@@ -113,11 +112,6 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                 stability_params={"perc_col_del": self.config.perc_col_del}
             )
             lab_cut_dict[k] = labels_k_cut
-        # Saving progress
-        logging.info("Saving models and labels progress...")
-        with open(f'saved_outputs/models_labels_dict.pkl', 'wb') as file:
-            pickle.dump(models_labels_dict, file)
-        logging.info("Dictionary saved!")
 
         return mod_lab_dict, lab_cut_dict
 
@@ -162,14 +156,6 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
             score_matrix[row, idx_col] = score
 
         return score_matrix
-
-    @staticmethod
-    def _save_results(score_matrix, models_labels_dict):
-        logging.info("Saving intermediate models & score matrix...")
-        np.save('saved_outputs/score_matrix.npy', score_matrix)
-        with open('saved_outputs/models_labels_dict.pkl', 'wb') as file:
-            pickle.dump(models_labels_dict, file)
-        logging.info("Score matrix and dictionary saved!")
 
 
     @staticmethod
@@ -230,16 +216,3 @@ class ValidationTimeSeriesClustering(TimeSeriesClustering):
                     algos_clus_dict[(k-self.k1)+algo_idx*n_k] = (algo_spec, k)
             topk_algo_clus.append(algos_clus_dict[idx])
         return topk_algo_clus
-
-    @staticmethod
-    def save_output_to_file(filename: str, optim_algo: str, optim_n_clusters: int):
-        """
-        Save the output of the clustering validation in .txt file.
-        :param filename: Name of the saved text file
-        :param optim_algo: Optimal algorithm name
-        :param optim_n_clusters: Optimal number of clusters within the tested range
-        """
-        with open(filename, "w") as text_file:
-            text_file.write(f'Result of Validation: Algorithm: {optim_algo}, N° clusters: {optim_n_clusters}')
-
-
