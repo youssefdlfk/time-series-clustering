@@ -4,7 +4,7 @@ import logging
 
 # HYPER PARAMS
 TARGET_N = 2050
-ONLY_INSIGHT = False
+ONLY_INSIGHT = True
 
 
 # Setup logging
@@ -39,10 +39,11 @@ data = data.drop_duplicates(subset=['rating', 'time', 'unique_trial'])
 logging.info('Up sampling time series...')
 tot_trial_nb = data['unique_trial'].nunique()
 new_df = pd.DataFrame(columns=['Id', 'InterpRating', 'solution_strategy_response.keys'])
-for trial in range(1, tot_trial_nb + 1):
-    logging.info(f'TRIAL N°{trial}...')
+for unique_trial in range(1, tot_trial_nb + 1):
+    logging.info(f'TRIAL N°{unique_trial}...')
     # get time series of trial
-    y_data = data[data['unique_trial'] == trial]['rating']
+    y_data = data[data['unique_trial'] == unique_trial]['rating']
+    original_trial = data[data['unique_trial']==unique_trial]['Trial'].iloc[0]
     # get new indices of values
     target_indices = np.arange(0, TARGET_N, TARGET_N / len(y_data))
     round_target_indices = [np.floor(idx) for idx in target_indices]
@@ -65,15 +66,23 @@ for trial in range(1, tot_trial_nb + 1):
     y_interp = y_stretched.interpolate(method='index', limit_direction='both')
     # add time series to new df
     logging.info('Add time series to df...')
-    id = data[data['unique_trial'] == trial]['Id'].unique().item()
-    sol_strat = data[data['unique_trial'] == trial]['solution_strategy_response.keys'].unique().item()
+    id = data[data['unique_trial'] == unique_trial]['Id'].unique().item()
+    sol_strat = data[data['unique_trial'] == unique_trial]['solution_strategy_response.keys'].unique().item()
     interp_data = pd.DataFrame(
-        {'Id': [id] * len(y_interp), 'Trial': [trial] * len(y_interp), 'InterpRating': y_interp,
-         'solution_strategy_response.keys': [sol_strat] * len(y_interp)})
+        {'Id': [id] * len(y_interp), 'Trial': original_trial, 'UniqueTrial': [unique_trial] * len(y_interp),
+         'InterpRating': y_interp, 'solution_strategy_response.keys': [sol_strat] * len(y_interp)})
     new_df = pd.concat([new_df, interp_data])
+
+# trial number to int type
+new_df['Trial'] = new_df['Trial'].astype(int)
+
 
 # save new dataframe to csv file
 if ONLY_INSIGHT:
+    # REMOVE NON-INSIGHT TRIALS
+    logging.info('Removing trials solved with strategy 2...')
+    idx_to_drop = new_df[new_df['solution_strategy_response.keys'] == 2].index
+    new_df.drop(idx_to_drop, inplace=True)
     new_df.to_csv("dataRaw_AnswerUpdated_processed_INSIGHT.csv")
 else:
     new_df.to_csv("dataRaw_AnswerUpdated_processed.csv")

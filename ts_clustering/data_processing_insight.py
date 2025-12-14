@@ -17,10 +17,9 @@ import torch
 from config import default_config as config
 from ts_clustering.clustering.utils import spearman_footrule_distance
 
-def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor: int, filter: str) -> tuple[np.ndarray, pd.DataFrame]:
+def data_proc_insight(csv_name: str, timeseries_length: int) -> tuple[np.ndarray, pd.DataFrame]:
     """
     Process CSV data from Insight experiment and convert it into a tensor for clustering
-    :param down_sample_factor: Down sampling factor for time series data
     :param csv_name: File name of the CSV data
     :param timeseries_length: Number of data points of each time series (should be the same)
     :return: A tensor of the time series data and a dataframe indicating insight or not insight for each time series
@@ -40,17 +39,6 @@ def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor:
 
     # Rename for clarity and easier access
     df = df.rename(columns={'solution_strategy_response.keys': 'Insight'})
-
-    # Filter insight or non-insight trials if specified
-    if filter is not None:
-        if filter == 'insight':
-            logging.info("Keeping only insight trials...")
-            df = df[df['Insight'] == 1]
-        elif filter == 'non-insight':
-            logging.info("Keeping only non-insight trials...")
-            df = df[df['Insight'] == 2]
-        else:
-            raise ValueError(f'{filter} is not recognized as filter.')
 
     # Count number of trials per participant
     trial_counts = df.groupby(['Id'])['Trial'].nunique().reset_index(name='Trial_count')
@@ -79,9 +67,6 @@ def data_proc_insight(csv_name: str, timeseries_length: int, down_sample_factor:
 
     # Convert tensor to numpy array
     X_data = X_data.numpy()
-
-    # Downsampling
-    X_data = X_data[:, ::down_sample_factor]
 
     return X_data, df_insight
 
@@ -124,7 +109,7 @@ def save_outputs_to_csv(topk, df_insight, config, clusterer, validator):
     score_df.to_csv('saved_outputs/'+config.score_matrix_output_file+'.csv', index=False)
     rank_df.to_csv('saved_outputs/'+config.rank_matrix_output_file+'.csv', index=False)
     dist_to_ref_df.to_csv('saved_outputs/'+config.dist_to_ref_output_file+'.csv', index=False)
-    cluster_center_df.to_csv('saved_outputs/'+config.cluster_centers_output_file+'.csv', index=False)
+    cluster_center_df.to_csv('saved_outputs/'+config.cluster_centers_output_file+f'_{topk}.csv', index=False)
 
 
 

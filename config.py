@@ -33,8 +33,6 @@ class ClusteringConfig:
     k2: int = 6
     # Number of best algo to save and plot
     topk: int = 3
-    # Down sampling factor of time series to manage memory usage for DTW
-    down_sample_factor: int = 1
     # Random seed for reproducibility
     random_seed: int = 42
     # Output files

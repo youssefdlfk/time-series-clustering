@@ -26,8 +26,7 @@ def main():
     # Step 1: Load and process time series data and extract dataframe on insight or not
     logging.info("Loading and preprocessing data...")
     # Format data for clustering and convert to tensor
-    X_data, df_insight = data_proc_insight(csv_name=config.csv_name, timeseries_length=config.ts_length,
-                                           down_sample_factor=config.down_sample_factor, filter=None)
+    X_data, df_insight = data_proc_insight(csv_name=config.csv_name, timeseries_length=config.ts_length)
 
     # Step 2: Initialize Clustering and Validation
     clusterer = TimeSeriesClustering(X=X_data, config=config)
